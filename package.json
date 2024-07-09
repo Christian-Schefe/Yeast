@@ -1,0 +1,10 @@
+{
+  "name": "com.meeshroom.utils.yeast",
+  "version": "0.0.1",
+  "description": "A utility package for working with YAML: YAML Encoding And Serialization Toolkit",
+  "displayName": "Yeast",
+  "author": {
+    "name": "Christian Schefe",
+    "email": "meeshroomchai@gmail.com"
+  }
+}
