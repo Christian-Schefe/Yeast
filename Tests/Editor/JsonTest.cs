@@ -36,6 +36,7 @@ public class JsonTest
         Assert.AreEqual("\"\\n\"", Yeast.Stringify("\n"));
         Assert.AreEqual("\"\\r\"", Yeast.Stringify("\r"));
         Assert.AreEqual("\"\\t\"", Yeast.Stringify("\t"));
+        Assert.AreEqual("\"\\b\"", Yeast.Stringify("\b"));
         Assert.AreEqual("\"\\\\\"", Yeast.Stringify("\\"));
         Assert.AreEqual("\"\\\"\"", Yeast.Stringify("\""));
     }
@@ -53,17 +54,20 @@ public class JsonTest
     [Test]
     public void TestPrimitivesParse()
     {
+        Yeast.PushSettings(ConversionSettings.Strict);
         Assert.AreEqual(1, Yeast.Parse<int>("1"));
         Assert.AreEqual(1.5f, Yeast.Parse<float>("1.5"));
         Assert.AreEqual(true, Yeast.Parse<bool>("true"));
         Assert.AreEqual(false, Yeast.Parse<bool>("false"));
         Assert.AreEqual(null, Yeast.Parse<object>("null"));
         Assert.AreEqual("Hello", Yeast.Parse<string>("\"Hello\""));
+        Yeast.PopSettings();
     }
 
     [Test]
     public void TestArraysParse()
     {
+        Yeast.PushSettings(ConversionSettings.Strict);
         Assert.AreEqual(new int[] { 1, 2, 3 }, Yeast.Parse<int[]>("[1,2,3]"));
         Assert.AreEqual(new float[] { 1f, 2.1f, 3.444f }, Yeast.Parse<float[]>("[1,2.0999999046325684,3.4440000057220459]"));
         Assert.AreEqual(new string[] { "Hello", "World" }, Yeast.Parse<string[]>("[\"Hello\",\"World\"]"));
@@ -76,6 +80,7 @@ public class JsonTest
             list.Add(i);
         }
         Test(list);
+        Yeast.PopSettings();
     }
 
     [Test]
@@ -94,14 +99,73 @@ public class JsonTest
         Test(new Person("John", 25, "Swimming", "Reading"));
         Test(new KeyValuePair<int, int>(1, 3));
         Test(new Dictionary<int, int>() { { 1, 3 }, { 2, 4 }, { 4, 5 } });
-        Test("\n\t\r");
+        Test("\n\t\r\b\u0001\0");
         Test(new Nested(3));
+    }
 
+    [Test]
+    public void TestEnums()
+    {
+        Test(TestEnum.A);
+        Test(TestEnum.B);
+        Test(TestEnum.C);
+        Test(TestEnum.None);
+        Test(TestEnumShort.A);
+        Test(TestEnumShort.B);
+        Test(TestEnumShort.C);
+        Test(TestEnumShort.None);
+    }
+
+    [Test]
+    public void TestObjectType()
+    {
+        Assert.AreEqual(5, Yeast.Parse<object>("5"));
+        Assert.AreEqual(5.5, Yeast.Parse<object>("5.5"));
+        Assert.AreEqual("hello", Yeast.Parse<object>("\"hello\""));
+        Assert.AreEqual(true, Yeast.Parse<object>("true"));
+        Assert.AreEqual(null, Yeast.Parse<object>("null"));
+        Assert.AreEqual(new object[] { 1, 2, 3 }, Yeast.Parse<object>("[1,2,3]"));
+        Assert.AreEqual(new Dictionary<string, object>() { { "a", 1 }, { "b", 3 } }, Yeast.Parse<object>("{\"a\":1,\"b\":3}"));
+    }
+
+    [Test]
+    public void TestBigNumbers()
+    {
+        Test(1_000_000_000_000_000);
+        Test(1_000_000_000_000_000_000_000f);
+        Test(-1_000_000_000_000_000_000_000d);
+        Test(double.Epsilon);
+        Test(double.MaxValue);
+        Test(double.NaN);
+        Test(double.NegativeInfinity);
+        Test(double.PositiveInfinity);
+        Test(decimal.MaxValue);
+        Test(15m);
+        Test(decimal.MinValue);
+    }
+
+    [Test]
+    public void TestIgnoreExtraFields()
+    {
+        Assert.AreEqual(new SimpleClass(1, "Hello"), Yeast.Parse<SimpleClass>("{\"number\":1,\"str\":\"Hello\",\"extra\":5}"));
+        Assert.Throws<ConversionExceptions.TypeMismatchException>(() => Yeast.Parse<SimpleClass>("{\"number\":1,\"str\":\"Hello\",\"extra\":5}", ConversionSettings.Strict));
+    }
+
+    [Test]
+    public void TestDefaultsForMissingFields()
+    {
+        Yeast.PushSettings(ConversionSettings.Relaxed);
+        Assert.AreEqual(new SimpleClass(1, null), Yeast.Parse<SimpleClass>("{\"number\":1,\"extra\":5}"));
+        Assert.AreEqual(new SimpleClass(0, "hello"), Yeast.Parse<SimpleClass>("{\"str\":\"hello\"}"));
+        Assert.Throws<ConversionExceptions.TypeMismatchException>(() => Yeast.Parse<SimpleClass>("{\"number\":1}", ConversionSettings.Strict));
+        Yeast.PopSettings();
     }
 
     private void Test<T>(T obj)
     {
-        Assert.AreEqual(obj, Yeast.Parse<T>(Yeast.Stringify(obj)));
+        var json = Yeast.Stringify(obj);
+        Debug.Log(json);
+        Assert.AreEqual(obj, Yeast.Parse<T>(json));
     }
 }
 
@@ -112,6 +176,32 @@ public class Generic<T>
     public Generic(T value)
     {
         this.value = value;
+    }
+}
+
+public class SimpleClass
+{
+    public int number;
+    public string str;
+
+    public SimpleClass(int number, string str)
+    {
+        this.number = number;
+        this.str = str;
+    }
+
+    public SimpleClass() { }
+
+    public override bool Equals(object obj)
+    {
+        return obj is SimpleClass @class &&
+               number == @class.number &&
+               str == @class.str;
+    }
+
+    public override int GetHashCode()
+    {
+        return System.HashCode.Combine(number, str);
     }
 }
 
@@ -145,6 +235,16 @@ public class Nested
     {
         return System.HashCode.Combine(childL, childR, depth);
     }
+}
+
+public enum TestEnum
+{
+    A, B, C, None
+}
+
+public enum TestEnumShort : short
+{
+    A, B, C, None
 }
 
 public struct Person

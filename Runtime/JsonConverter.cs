@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
-using static JsonConverter;
 
 public class JsonConverter : IConverter<string>
 {
@@ -28,7 +27,10 @@ public class JsonConverter : IConverter<string>
         }
         else if (value is SimpleValue.FloatValue floatValue)
         {
-            return floatValue.value.ToString("R", CultureInfo.InvariantCulture);
+            if (double.IsNaN(floatValue.value)) return "NaN";
+            else if (double.IsPositiveInfinity(floatValue.value)) return "+Infinity";
+            else if (double.IsNegativeInfinity(floatValue.value)) return "-Infinity";
+            else return floatValue.value.ToString("R", CultureInfo.InvariantCulture);
         }
         else if (value is SimpleValue.NullValue)
         {
@@ -95,6 +97,7 @@ public class JsonConverter : IConverter<string>
             return ParseNumber(text, ref position);
         }
     }
+
 
     private SimpleValue.StringValue ParseString(string text, ref int position)
     {
@@ -178,9 +181,9 @@ public class JsonConverter : IConverter<string>
         bool isFloat = false;
         CheckPosition(text, ref position);
         char c = text[position];
-        while (char.IsDigit(c) || c == '.' || c == '+' || c == '-' || c == 'e' || c == 'E')
+        while (char.IsLetterOrDigit(c) || c == '.' || c == '+' || c == '-')
         {
-            if (c == '.')
+            if (c == '.' || char.IsLetter(c))
             {
                 isFloat = true;
             }
@@ -189,6 +192,19 @@ public class JsonConverter : IConverter<string>
             c = text[position];
         }
         string value = text[start..position];
+
+        if (value == "+Infinity")
+        {
+            return new SimpleValue.FloatValue { value = double.PositiveInfinity };
+        }
+        else if (value == "-Infinity")
+        {
+            return new SimpleValue.FloatValue { value = double.NegativeInfinity };
+        }
+        else if (value == "NaN")
+        {
+            return new SimpleValue.FloatValue { value = double.NaN };
+        }
 
         try
         {
@@ -201,9 +217,9 @@ public class JsonConverter : IConverter<string>
                 return new SimpleValue.IntegerValue { value = long.Parse(value, CultureInfo.InvariantCulture) };
             }
         }
-        catch (FormatException)
+        catch (FormatException e)
         {
-            throw new MalformedJsonException("Invalid number format", position);
+            throw new MalformedJsonException("Invalid number format: " + value + " " + e.Message, position);
         }
     }
 
@@ -322,7 +338,7 @@ public static class JsonStringUtils
             if (c == '\\')
             {
                 // Handle escape sequences
-                if (i + 1 >= literal.Length) throw new MalformedJsonException("Unexpected end of string", i);
+                if (i + 1 >= literal.Length) throw new JsonConverter.MalformedJsonException("Unexpected end of string", i);
                 char nextChar = literal[i + 1];
                 switch (nextChar)
                 {
@@ -330,6 +346,12 @@ public static class JsonStringUtils
                     case 'n': result.Append("\n"); break;
                     case 't': result.Append("\t"); break;
                     case 'r': result.Append("\r"); break;
+                    case 'b': result.Append("\b"); break;
+                    case 'f': result.Append("\f"); break;
+                    case 'a': result.Append("\a"); break;
+                    case 'v': result.Append("\v"); break;
+                    case '0': result.Append("\0"); break;
+                    case '\"': result.Append("\""); break;
                     case 'u':
                         // Parse Unicode escape sequence
                         string unicodeValue = literal.Substring(i + 2, 4);

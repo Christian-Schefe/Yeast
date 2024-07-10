@@ -13,6 +13,35 @@ public interface IConverter<K>
     }
 }
 
+public struct ConversionSettings
+{
+    public UseDefaultSetting useDefaultSetting;
+    public bool ignoreExtraFields;
+
+    public static ConversionSettings Default = new()
+    {
+        useDefaultSetting = UseDefaultSetting.Never,
+        ignoreExtraFields = true
+    };
+
+    public static ConversionSettings Strict = new()
+    {
+        useDefaultSetting = UseDefaultSetting.Never,
+        ignoreExtraFields = false
+    };
+
+    public static ConversionSettings Relaxed = new()
+    {
+        useDefaultSetting = UseDefaultSetting.ForMissingOrMismatchedFields,
+        ignoreExtraFields = true
+    };
+
+    public enum UseDefaultSetting
+    {
+        Never, ForMissingFields, ForMissingOrMismatchedFields
+    }
+}
+
 public abstract class SimpleValue
 {
     public static SimpleValue From(object value)
@@ -62,7 +91,7 @@ public abstract class SimpleValue
         }
     }
 
-    public bool TryInto(Type type, out object value, out Exception exception)
+    public bool TryInto(ConversionSettings settings, Type type, out object value, out Exception exception)
     {
         if (type == null)
         {
@@ -70,18 +99,18 @@ public abstract class SimpleValue
         }
         else if (!TypeUtils.IsInstantiateable(type) || type.IsSubclassOf(typeof(UnityEngine.Object)))
         {
-            throw new ConversionExceptions.InvalidTypeException("Cannot deserialize to new instances of type '" + type.Name + ".'");
+            throw new ConversionExceptions.TypeMismatchException("Cannot deserialize to new instances of type '" + type.Name + ".'");
         }
-        return TryIntoInternal(type, out value, out exception);
+        return TryIntoInternal(settings, type, out value, out exception);
     }
 
-    protected abstract bool TryIntoInternal(Type type, out object value, out Exception exception);
+    protected abstract bool TryIntoInternal(ConversionSettings settings, Type type, out object value, out Exception exception);
 
     public class StringValue : SimpleValue
     {
         public string value;
 
-        protected override bool TryIntoInternal(Type type, out object value, out Exception exception)
+        protected override bool TryIntoInternal(ConversionSettings settings, Type type, out object value, out Exception exception)
         {
             if (type == typeof(string) || type == typeof(object))
             {
@@ -99,13 +128,28 @@ public abstract class SimpleValue
     {
         public long value;
 
-        protected override bool TryIntoInternal(Type type, out object value, out Exception exception)
+        protected override bool TryIntoInternal(ConversionSettings settings, Type type, out object value, out Exception exception)
         {
             if (TypeUtils.IsIntegerNumber(type) || TypeUtils.IsRationalNumber(type))
             {
                 try
                 {
                     value = Convert.ChangeType(this.value, type);
+                    exception = null;
+                    return true;
+                }
+                catch
+                {
+                    value = default(long);
+                    exception = new ConversionExceptions.InvalidCastException("Failed to convert long to " + type.Name + ": cast failed");
+                    return false;
+                }
+            }
+            else if (type.IsEnum)
+            {
+                try
+                {
+                    value = Enum.ToObject(type, this.value);
                     exception = null;
                     return true;
                 }
@@ -132,7 +176,7 @@ public abstract class SimpleValue
     {
         public double value;
 
-        protected override bool TryIntoInternal(Type type, out object value, out Exception exception)
+        protected override bool TryIntoInternal(ConversionSettings settings, Type type, out object value, out Exception exception)
         {
             if (TypeUtils.IsRationalNumber(type))
             {
@@ -165,7 +209,7 @@ public abstract class SimpleValue
     {
         public bool value;
 
-        protected override bool TryIntoInternal(Type type, out object value, out Exception exception)
+        protected override bool TryIntoInternal(ConversionSettings settings, Type type, out object value, out Exception exception)
         {
             if (type == typeof(bool))
             {
@@ -189,7 +233,7 @@ public abstract class SimpleValue
     {
         public List<SimpleValue> value;
 
-        protected override bool TryIntoInternal(Type type, out object value, out Exception exception)
+        protected override bool TryIntoInternal(ConversionSettings settings, Type type, out object value, out Exception exception)
         {
             if (type == typeof(object) || type.IsArray)
             {
@@ -197,7 +241,7 @@ public abstract class SimpleValue
                 var array = Array.CreateInstance(elementType, this.value.Count);
                 for (int i = 0; i < this.value.Count; i++)
                 {
-                    if (!this.value[i].TryInto(elementType, out object element, out Exception e))
+                    if (!this.value[i].TryInto(settings, elementType, out object element, out Exception e))
                     {
                         value = default;
                         exception = e;
@@ -214,13 +258,13 @@ public abstract class SimpleValue
                 if (!TypeUtils.TryCreateInstance(type, out object instance))
                 {
                     value = null;
-                    exception = new ConversionExceptions.InvalidTypeException("Failed to create instance of " + type.Name);
+                    exception = new ConversionExceptions.TypeMismatchException("Failed to create instance of " + type.Name);
                     return false;
                 }
                 var collection = new CollectionWrapper(type, elementType, instance);
                 foreach (var element in this.value)
                 {
-                    if (!element.TryInto(elementType, out object elementObject, out Exception e))
+                    if (!element.TryInto(settings, elementType, out object elementObject, out Exception e))
                     {
                         value = default;
                         exception = e;
@@ -233,7 +277,7 @@ public abstract class SimpleValue
                 return true;
             }
             value = default;
-            exception = new ConversionExceptions.InvalidTypeException("Failed to convert array to " + type.Name + ": not a collection type");
+            exception = new ConversionExceptions.TypeMismatchException("Failed to convert array to " + type.Name + ": not a collection type");
             return false;
         }
     }
@@ -242,14 +286,14 @@ public abstract class SimpleValue
     {
         public Dictionary<string, SimpleValue> value;
 
-        protected override bool TryIntoInternal(Type type, out object value, out Exception exception)
+        protected override bool TryIntoInternal(ConversionSettings settings, Type type, out object value, out Exception exception)
         {
             if (type == typeof(object))
             {
                 var instance = new Dictionary<string, object>();
                 foreach (var pair in this.value)
                 {
-                    if (!pair.Value.TryInto(typeof(object), out object pairValue, out Exception e))
+                    if (!pair.Value.TryInto(settings, typeof(object), out object pairValue, out Exception e))
                     {
                         value = default;
                         exception = e;
@@ -266,38 +310,60 @@ public abstract class SimpleValue
                 if (!TypeUtils.TryCreateInstance(type, out object instance))
                 {
                     value = null;
-                    exception = new ConversionExceptions.InvalidTypeException("Failed to create instance of " + type.Name);
+                    exception = new ConversionExceptions.TypeMismatchException("Failed to create instance of " + type.Name);
                     return false;
                 }
+                var unusedKeys = new HashSet<string>(this.value.Keys);
                 foreach (var field in TypeUtils.GetFields(type))
                 {
-                    if (!this.value.TryGetValue(field.Name, out SimpleValue fieldValue))
+                    string fieldName = field.Name;
+                    if (!this.value.TryGetValue(fieldName, out SimpleValue fieldValue))
                     {
+                        if (settings.useDefaultSetting == ConversionSettings.UseDefaultSetting.ForMissingFields
+                            || settings.useDefaultSetting == ConversionSettings.UseDefaultSetting.ForMissingOrMismatchedFields)
+                        {
+                            field.SetValue(instance, TypeUtils.DefaultValue(type));
+                            unusedKeys.Remove(fieldName);
+                            continue;
+                        }
                         value = default;
-                        exception = new ConversionExceptions.InvalidTypeException("Failed to convert map to " + type.Name + ": missing field " + field.Name);
+                        exception = new ConversionExceptions.TypeMismatchException("Failed to convert map to " + type.Name + ": missing field " + fieldName);
                         return false;
                     }
-                    if (!fieldValue.TryInto(field.FieldType, out object fieldValueObject, out Exception e))
+                    if (!fieldValue.TryInto(settings, field.FieldType, out object fieldValueObject, out Exception e))
                     {
+                        if (settings.useDefaultSetting == ConversionSettings.UseDefaultSetting.ForMissingOrMismatchedFields)
+                        {
+                            field.SetValue(instance, TypeUtils.DefaultValue(type));
+                            unusedKeys.Remove(fieldName);
+                            continue;
+                        }
                         value = default;
                         exception = e;
                         return false;
                     }
                     field.SetValue(instance, fieldValueObject);
+                    unusedKeys.Remove(fieldName);
+                }
+                if (!settings.ignoreExtraFields && unusedKeys.Count > 0)
+                {
+                    value = default;
+                    exception = new ConversionExceptions.TypeMismatchException("Failed to convert map to " + type.Name + ": extra fields");
+                    return false;
                 }
                 value = instance;
                 exception = null;
                 return true;
             }
             value = default;
-            exception = new ConversionExceptions.InvalidTypeException("Failed to convert map to " + type.Name + ": not a class type");
+            exception = new ConversionExceptions.TypeMismatchException("Failed to convert map to " + type.Name + ": not a class type");
             return false;
         }
     }
 
     public class NullValue : SimpleValue
     {
-        protected override bool TryIntoInternal(Type type, out object value, out Exception exception)
+        protected override bool TryIntoInternal(ConversionSettings settings, Type type, out object value, out Exception exception)
         {
             if (type == typeof(object) || type.IsClass || Nullable.GetUnderlyingType(type) != null)
             {
@@ -324,9 +390,9 @@ public static class ConversionExceptions
         public InvalidCastException(string message) : base(message) { }
     }
 
-    public class InvalidTypeException : ConversionException
+    public class TypeMismatchException : ConversionException
     {
-        public InvalidTypeException(string message) : base(message) { }
+        public TypeMismatchException(string message) : base(message) { }
     }
 }
 
@@ -422,12 +488,17 @@ public static class TypeUtils
 
     public static bool IsIntegerNumber(Type type)
     {
-        return type == typeof(int) || type == typeof(long) || type == typeof(byte) || type == typeof(short);
+        return type == typeof(int) || type == typeof(long) || type == typeof(byte) || type == typeof(short) || type == typeof(sbyte) || type == typeof(ushort) || type == typeof(uint) || type == typeof(ulong);
     }
 
     public static bool IsRationalNumber(Type type)
     {
         return type == typeof(float) || type == typeof(double);
+    }
+
+    public static object DefaultValue(Type type)
+    {
+        return type.IsValueType ? Activator.CreateInstance(type) : null;
     }
 
     public static FieldInfo[] GetFields(Type type)
