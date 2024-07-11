@@ -1,17 +1,14 @@
-# Yeast: YAML Encoding And Serialization Toolkit
+# Yeast: Your Easily Accessible Serialization Toolkit
 
-This Unity package provides a set of utility functions and classes for working with YAML files in Unity projects.
+This Unity package provides a set of utility functions and classes for working with JSON files in Unity projects.
 
 ## Features
 
-- Parsing and serializing YAML files
-- Easy integration with Unity's asset pipeline
-- Support for custom YAML tags and anchors
-- Error handling and validation for YAML files
+- Parsing and serializing JSON files
 
 ## Installation
 
-To install the Unity YAML Utility Package, follow these steps:
+To install the package, follow these steps:
 
 1. Open your Unity project.
 2. Go to the **Package Manager** window.
@@ -25,18 +22,22 @@ To use Yeast in your project, follow these steps:
 
 1. Import the package into your Unity project.
 2. Add the necessary using statements to your script:
-    ```csharp
-    using UnityEngine;
-    using Yeast;
-    ```
-3. Use the provided utility functions and classes to work with YAML files in your project.
+   ```csharp
+   using Yeast.Json;
+   ```
+3. Use the provided utility functions and classes to work with JSON in your project.
 
 ## Examples
 
-Here are some examples of how to use the Unity YAML Utility Package:
+Here are some examples of how to use Yeast:
 
 ```csharp
-// Not yet implemented
+public struct Test {
+    public int key;
+}
+Test obj = Json.Parse<Test>("{\"key\":5}");
+string json = Json.Stringify(obj);
+Assert.AreEqual("{\"key\":5}", json);
 ```
 
 ## Contributing
