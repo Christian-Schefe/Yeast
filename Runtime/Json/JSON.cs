@@ -18,7 +18,7 @@ namespace Yeast.Json
             return mode switch
             {
                 JsonStringifyMode.Compact => (new ToJsonSettings() { prettyPrint = false, indentSize = 0 }, new ToIonSettings() { maxDepth = 100 }),
-                JsonStringifyMode.Pretty => (new ToJsonSettings { prettyPrint = true, indentSize = 2 }, new ToIonSettings { maxDepth = 100 }),
+                JsonStringifyMode.Pretty => (new ToJsonSettings() { prettyPrint = true, indentSize = 2 }, new ToIonSettings() { maxDepth = 100 }),
                 _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
             };
         }
@@ -27,8 +27,8 @@ namespace Yeast.Json
         {
             return mode switch
             {
-                JsonParseMode.Exact => (new FromJsonSettings(), new FromIonSettings { ignoreExtraFields = false, useDefaultSetting = FromIonSettings.UseDefaultSetting.Never }),
-                JsonParseMode.Loose => (new FromJsonSettings(), new FromIonSettings { ignoreExtraFields = true, useDefaultSetting = FromIonSettings.UseDefaultSetting.ForMissingOrMismatchedFields }),
+                JsonParseMode.Exact => (new FromJsonSettings(), new FromIonSettings() { ignoreExtraFields = false, useDefaultSetting = FromIonSettings.UseDefaultSetting.Never }),
+                JsonParseMode.Loose => (new FromJsonSettings(), new FromIonSettings() { ignoreExtraFields = true, useDefaultSetting = FromIonSettings.UseDefaultSetting.ForMissingOrMismatchedFields }),
                 _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
             };
         }

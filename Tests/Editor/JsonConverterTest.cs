@@ -111,11 +111,11 @@ namespace Yeast.Test
             if (!converter.TryInto(val, out var result, new ToJsonSettings() { indentSize = 0, prettyPrint = false }, out var exception)) throw exception;
 
             //Debug.Log($"Json: {result}");
-            if (!converter.TryFrom(result, out var ionValue, new FromJsonSettings(), out exception)) throw exception;
+            if (!converter.TryFrom(result, out var val2, new FromJsonSettings(), out exception)) throw exception;
 
-            Assert.AreEqual(val, ionValue);
+            Assert.AreEqual(val, val2);
 
-            if (!converter.TryInto(val, out var result2, new ToJsonSettings() { indentSize = 0, prettyPrint = false }, out var exception2)) throw exception2;
+            if (!converter.TryInto(val2, out var result2, new ToJsonSettings() { indentSize = 0, prettyPrint = false }, out var exception2)) throw exception2;
             Assert.AreEqual(result, result2);
 
         }

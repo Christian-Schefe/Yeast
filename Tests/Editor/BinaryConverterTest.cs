@@ -110,10 +110,10 @@ namespace Yeast.Test
             if (!converter.TryInto(val, out var result, new ToBinarySettings(), out var exception)) throw exception;
 
             //Debug.Log($"Binary: {string.Join(", ", result)}");
-            if (!converter.TryFrom(result, out var ionValue, new FromBinarySettings(), out exception)) throw exception;
-            Assert.AreEqual(val, ionValue);
+            if (!converter.TryFrom(result, out var val2, new FromBinarySettings(), out exception)) throw exception;
+            Assert.AreEqual(val, val2);
 
-            if (!converter.TryInto(val, out var result2, new ToBinarySettings(), out var exception2)) throw exception2;
+            if (!converter.TryInto(val2, out var result2, new ToBinarySettings(), out var exception2)) throw exception2;
             Assert.AreEqual(result, result2);
 
         }

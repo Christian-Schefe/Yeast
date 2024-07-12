@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Yeast.Ion;
-using static UnityEditor.Progress;
-using static UnityEngine.Networking.UnityWebRequest;
 
 namespace Yeast.Binary
 {
@@ -164,10 +162,10 @@ namespace Yeast.Binary
             return result.ToArray();
         }
 
-        private byte[] SerializeArray(List<IIonValue> values)
+        private byte[] SerializeArray(IIonValue[] values)
         {
             List<byte> bytes = new();
-            bytes.AddRange(BitConverter.GetBytes(values.Count));
+            bytes.AddRange(BitConverter.GetBytes(values.Length));
             foreach (var item in values)
             {
                 bytes.AddRange(Serialize(item));

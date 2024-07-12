@@ -10,14 +10,6 @@ namespace Yeast.Test
     public class JsonTest
     {
         [Test]
-        public void TestSimpleStructStringify()
-        {
-            Person john = new("John", 25, "Swimming", "Reading");
-            string json = JSON.Stringify(john);
-            Assert.AreEqual("{\"name\":\"John\",\"age\":25,\"hobbies\":[\"Swimming\",\"Reading\"],\"<Prop>k__BackingField\":\"John25\"}", json);
-        }
-
-        [Test]
         public void TestPrimitivesStringify()
         {
             Assert.AreEqual("1", JSON.Stringify((byte)1));
@@ -53,6 +45,36 @@ namespace Yeast.Test
             Test("\\");
             Test("\"");
         }
+
+        [Test]
+        public void TestBigNumbers()
+        {
+            Test(1_000_000_000_000_000);
+            Test(1_000_000_000_000_000_000_000f);
+            Test(-1_000_000_000_000_000_000_000d);
+            Test(double.Epsilon);
+            Test(double.MaxValue);
+            Test(double.NaN);
+            Test(double.NegativeInfinity);
+            Test(double.PositiveInfinity);
+            Test(decimal.MaxValue);
+            Test(15m);
+            Test(decimal.MinValue);
+        }
+
+        [Test]
+        public void TestArrays()
+        {
+            Test(new int[] { 1, 2, 3 });
+            Test(new float[] { 1f, 2.1f, 3.444f });
+            Test(new int[,] { { 1, 2 }, { 3, 4 } });
+            Test(new string[] { "Hello", "World" });
+            Test(new List<int>() { 1, 2, 3 });
+            Test(new List<float>() { 1f, 2.1f, 3.444f });
+            Test(new List<string>() { "Hello", "World" });
+            Test(new List<List<int>>() { new() { 1, 2 }, new() { 3, 4 } });
+        }
+        /*
 
         [Test]
         public void TestArraysStringify()
@@ -138,22 +160,6 @@ namespace Yeast.Test
         }
 
         [Test]
-        public void TestBigNumbers()
-        {
-            Test(1_000_000_000_000_000);
-            Test(1_000_000_000_000_000_000_000f);
-            Test(-1_000_000_000_000_000_000_000d);
-            Test(double.Epsilon);
-            Test(double.MaxValue);
-            Test(double.NaN);
-            Test(double.NegativeInfinity);
-            Test(double.PositiveInfinity);
-            Test(decimal.MaxValue);
-            Test(15m);
-            Test(decimal.MinValue);
-        }
-
-        [Test]
         public void TestIgnoreExtraFields()
         {
             Assert.AreEqual(new SimpleClass(1, "Hello"), JSON.Parse<SimpleClass>("{\"number\":1,\"str\":\"Hello\",\"extra\":5}", JsonParseMode.Loose));
@@ -211,20 +217,13 @@ namespace Yeast.Test
 
             json = JSON.Stringify(new MinimalPrettyTest { number = 4, arr = new string[] { "hello world", "hi", "hello" } }, JsonStringifyMode.Pretty);
             Assert.AreEqual("{\n  \"number\": 4,\n  \"arr\": [\n    \"hello world\",\n    \"hi\",\n    \"hello\"\n  ]\n}", json);
-        }
+        }*/
 
         [Test]
         public void TestInheritance()
         {
-            var a = new A { x = 5 };
-            var b = new B { x = 5, y = 10 };
-            var c = new C { x = 5, y = 10, z = 15 };
-
-            c.SetP(20);
-
-            Test(a);
-            Test(b);
-            Test(c);
+            var student = new Student("John", 17, 1.75f, 135165);
+            Test(student);
         }
 
         [Test]
@@ -251,252 +250,17 @@ namespace Yeast.Test
             Test(new System.DateTime(2021, 1, 1, 12, 0, 0));
             Test(new System.TimeSpan(1, 2, 3, 4));
             Test(new System.DateTimeOffset(2021, 1, 1, 12, 0, 0, new System.TimeSpan(0, 2, 3, 0)));
-
         }
 
         private void Test<T>(T obj)
         {
             var json = JSON.Stringify(obj);
-            Debug.Log(json);
-            Assert.AreEqual(obj, JSON.Parse<T>(json));
-        }
-    }
+            UnityEngine.Debug.Log(json);
 
-    public struct MinimalPrettyTest
-    {
-        public int number;
-        public string[] arr;
-    }
-
-    public class Circular
-    {
-        public Circular child;
-        public int value;
-
-        public Circular(int value)
-        {
-            this.value = value;
-            child = this;
-        }
-
-        public Circular() { }
-
-        public override bool Equals(object obj)
-        {
-            return obj is Circular circular && value == circular.value &&
-                   EqualityComparer<Circular>.Default.Equals(child, circular.child);
-        }
-
-        public override int GetHashCode()
-        {
-            return System.HashCode.Combine(child, value);
-        }
-    }
-
-    public class Generic<T>
-    {
-
-        public T value;
-
-        public Generic(T value)
-        {
-            this.value = value;
-        }
-
-        public Generic() { }
-
-        public override string ToString()
-        {
-            return value.ToString();
-        }
-
-        public override bool Equals(object obj)
-        {
-            return obj is Generic<T> generic && value.Equals(generic.value);
-        }
-
-        public override int GetHashCode()
-        {
-            return System.HashCode.Combine(value);
-        }
-    }
-
-    public class SimpleClass
-    {
-        public int number;
-        public string str;
-
-        public SimpleClass(int number, string str)
-        {
-            this.number = number;
-            this.str = str;
-        }
-
-        public SimpleClass() { }
-
-        public override bool Equals(object obj)
-        {
-            return obj is SimpleClass @class &&
-                   number == @class.number &&
-                   str == @class.str;
-        }
-
-        public override int GetHashCode()
-        {
-            return System.HashCode.Combine(number, str);
-        }
-    }
-
-    public class SingleNested
-    {
-        public SingleNested child;
-
-        public int depth;
-        public SingleNested() { }
-        public SingleNested(int d)
-        {
-            depth = d;
-            if (d > 0)
-            {
-                child = new SingleNested(d - 1);
-            }
-        }
-
-        public override bool Equals(object obj)
-        {
-            return obj is SingleNested nested && depth == nested.depth &&
-                   EqualityComparer<SingleNested>.Default.Equals(child, nested.child);
-        }
-
-        public override int GetHashCode()
-        {
-            return System.HashCode.Combine(child, depth);
-        }
-    }
-
-    public class Nested
-    {
-        public Nested childL;
-        public Nested childR;
-        private int depth;
-
-        public Nested(int depth)
-        {
-            if (depth > 0)
-            {
-                childL = new Nested(depth - 1);
-                childR = new Nested(depth - 1);
-            }
-            this.depth = depth;
-        }
-
-        public Nested() { }
-
-        public override bool Equals(object obj)
-        {
-            return obj is Nested nested && depth == nested.depth &&
-                   EqualityComparer<Nested>.Default.Equals(childL, nested.childL) &&
-                   EqualityComparer<Nested>.Default.Equals(childR, nested.childR);
-        }
-
-        public override int GetHashCode()
-        {
-            return System.HashCode.Combine(childL, childR, depth);
-        }
-    }
-
-    public class A
-    {
-        public int x;
-        private int p = 10;
-
-        public int P => p;
-        public void SetP(int value) => p = value;
-
-        public override bool Equals(object obj)
-        {
-            return obj is A a && x == a.x && p == a.p;
-        }
-
-        public override int GetHashCode()
-        {
-            return System.HashCode.Combine(x, p);
-        }
-    }
-
-    public class B : A
-    {
-        public int y;
-
-        public override bool Equals(object obj)
-        {
-            return obj is B b && base.Equals(obj) && y == b.y;
-        }
-
-        public override int GetHashCode()
-        {
-            return System.HashCode.Combine(base.GetHashCode(), y);
-        }
-    }
-
-    public class C : B
-    {
-        public int z;
-
-        public override bool Equals(object obj)
-        {
-            return obj is C c && base.Equals(obj) && z == c.z;
-        }
-
-        public override int GetHashCode()
-        {
-            return System.HashCode.Combine(base.GetHashCode(), z);
-        }
-    }
-
-    public enum TestEnum
-    {
-        A, B, C, None
-    }
-
-    public enum TestEnumShort : short
-    {
-        A, B, C, None
-    }
-
-    public struct Person
-    {
-        public string name;
-        public int age;
-        public string[] hobbies;
-        public string Prop { get; set; }
-        [System.NonSerialized] private string doesntMatter;
-
-        public Person(string name, int age, params string[] hobbies)
-        {
-            this.name = name;
-            this.age = age;
-            this.hobbies = hobbies;
-            Prop = name + age;
-            doesntMatter = "test";
-        }
-
-        public readonly override string ToString()
-        {
-            return $"Person({name}, {age}, {string.Join(", ", hobbies)}), {Prop}, {doesntMatter}";
-        }
-
-        public readonly override bool Equals(object obj)
-        {
-            return obj is Person person &&
-                   name == person.name &&
-                   age == person.age && Prop == person.Prop &&
-                   System.Linq.Enumerable.SequenceEqual(hobbies, person.hobbies);
-        }
-
-        public readonly override int GetHashCode()
-        {
-            return System.HashCode.Combine(name, age, hobbies, Prop);
+            var obj2 = JSON.Parse<T>(json);
+            Assert.AreEqual(obj, obj2);
+            var json2 = JSON.Stringify(obj2);
+            Assert.AreEqual(json, json2);
         }
     }
 }

@@ -173,7 +173,7 @@ namespace Yeast.Ion
     {
         public IonType IonType => IonType.Array;
 
-        public List<IIonValue> value;
+        public IIonValue[] value;
 
         public ArrayValue()
         {
@@ -181,6 +181,11 @@ namespace Yeast.Ion
         }
 
         public ArrayValue(List<IIonValue> value)
+        {
+            this.value = value.ToArray();
+        }
+
+        public ArrayValue(IIonValue[] value)
         {
             this.value = value;
         }
@@ -197,7 +202,7 @@ namespace Yeast.Ion
 
         public override string ToString()
         {
-            var str = string.Join(", ", value.Select(v => v.ToString()));
+            var str = value == null ? "" : string.Join(", ", value.Select(v => v.ToString()));
             return $"ArrayValue({str})";
         }
     }
@@ -230,7 +235,8 @@ namespace Yeast.Ion
 
         public override string ToString()
         {
-            return $"MapValue({value})";
+            var str = string.Join(", ", value.Select(v => $"{v.Key}: {v.Value}"));
+            return $"MapValue({str})";
         }
     }
 }

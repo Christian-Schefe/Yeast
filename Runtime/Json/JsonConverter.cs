@@ -122,7 +122,7 @@ namespace Yeast.Json
             return str + ".0";
         }
 
-        private string StringifyArray(List<IIonValue> values, int indentLevel)
+        private string StringifyArray(IIonValue[] values, int indentLevel)
         {
             StringBuilder builder = new();
             builder.Append("[");
@@ -133,7 +133,7 @@ namespace Yeast.Json
                 for (int i = 0; i < indentLevel; i++) builder.Append(" ");
             }
 
-            for (int i = 0; i < values.Count; i++)
+            for (int i = 0; i < values.Length; i++)
             {
                 if (i >= 1)
                 {

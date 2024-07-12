@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine;
 using Yeast.Utils;
 
 namespace Yeast.Ion
@@ -113,6 +114,11 @@ namespace Yeast.Ion
                     intermediateArray.Add(el);
                 }
                 result = new ArrayValue(intermediateArray);
+            }
+            else if (type.IsArray) // must be multi-dimensional, as single-dimensional arrays implement ICollection<T>
+            {
+                Array array = (Array)value;
+                result = ConvertMultiDimArray(array, 0, depth);
             }
             else
             {
@@ -240,16 +246,19 @@ namespace Yeast.Ion
             {
                 if (type == typeof(object) || type.IsArray)
                 {
+                    var rank = type.GetArrayRank();
                     var elementType = type == typeof(object) ? typeof(object) : type.GetElementType();
-                    var array = Array.CreateInstance(elementType, arrayValue.value.Count);
-                    for (int i = 0; i < arrayValue.value.Count; i++)
+                    var array = Array.CreateInstance(elementType, arrayValue.value.Length);
+                    var elements = new object[arrayValue.value.Length];
+                    for (int i = 0; i < arrayValue.value.Length; i++)
                     {
                         if (!ToObject(elementType, arrayValue.value[i], out object element, out IonConversionException e))
                         {
                             return Reject(e, out result, out exception);
                         }
-                        array.SetValue(element, i);
+                        elements[i] = element;
                     }
+                    FillMultiDimArray(array, elements, arrayValue.value.Length);
                     return Accept(array, out result, out exception);
                 }
                 else if (TypeUtils.IsCollection(type, out var elementType))
@@ -332,6 +341,68 @@ namespace Yeast.Ion
             {
                 return Reject(new InternalException("Unknown IonValue Type" + type.Name), out result, out exception);
             }
+        }
+
+        private static void FillMultiDimArray(Array array, object[] values, int[] dimensions)
+        {
+            int index = 0;
+            int[] indices = new int[array.Rank];
+
+            while (true)
+            {
+                // Set the value in the multidimensional array
+                array.SetValue(values[index], indices);
+                index++;
+                if (index >= values.Length)
+                    break;
+
+                // Increment the indices
+                for (int i = indices.Length - 1; i >= 0; i--)
+                {
+                    indices[i]++;
+                    if (indices[i] < dimensions[i])
+                        break;
+                    if (i == 0)
+                        return; // Finished filling the array
+                    indices[i] = 0;
+                }
+            }
+        }
+
+        private IIonValue ConvertMultiDimArray(Array multiDimArray, int dimension, int depth)
+        {
+            int length = multiDimArray.GetLength(dimension);
+
+            // Create an array of arrays (jagged array) for the current dimension
+            IIonValue[] jaggedArray = new IIonValue[length];
+
+            if (dimension == multiDimArray.Rank - 1)
+            {
+                for (int i = 0; i < length; i++)
+                {
+                    int[] indices = new int[multiDimArray.Rank];
+                    indices[dimension] = i;
+                    if (!ToIonValue(multiDimArray.GetValue(indices), out var ele, out var ex, depth + 1))
+                    {
+                        throw ex;
+                    }
+                    jaggedArray[i] = ele;
+                }
+            }
+            else
+            {
+                for (int i = 0; i < length; i++)
+                {
+                    int[] indices = new int[multiDimArray.Rank];
+                    indices[dimension] = i;
+
+                    // Create a sub-array for the next dimension
+                    IIonValue subArray = ConvertMultiDimArray(multiDimArray, dimension + 1, depth);
+                    jaggedArray.SetValue(subArray, i);
+                }
+            }
+
+            return new ArrayValue(jaggedArray);
         }
     }
 }
