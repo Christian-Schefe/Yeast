@@ -1,11 +1,28 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Yeast.Ion
 {
-    public interface IIonValue { }
+    public interface IIonValue
+    {
+        public IonType IonType { get; }
+    }
+
+    public enum IonType : byte
+    {
+        Null,
+        String,
+        Integer,
+        Float,
+        Boolean,
+        Array,
+        Map
+    }
 
     public class NullValue : IIonValue
     {
+        public IonType IonType => IonType.Null;
+
         public NullValue() { }
 
         public override bool Equals(object obj)
@@ -17,10 +34,17 @@ namespace Yeast.Ion
         {
             return 0;
         }
+
+        public override string ToString()
+        {
+            return "NullValue()";
+        }
     }
 
     public class StringValue : IIonValue
     {
+        public IonType IonType => IonType.String;
+
         public string value;
 
         public StringValue()
@@ -42,10 +66,17 @@ namespace Yeast.Ion
         {
             return value.GetHashCode();
         }
+
+        public override string ToString()
+        {
+            return $"StringValue(\"{value}\")";
+        }
     }
 
     public class IntegerValue : IIonValue
     {
+        public IonType IonType => IonType.Integer;
+
         public long value;
 
         public IntegerValue()
@@ -67,10 +98,17 @@ namespace Yeast.Ion
         {
             return value.GetHashCode();
         }
+
+        public override string ToString()
+        {
+            return $"IntegerValue({value})";
+        }
     }
 
     public class FloatValue : IIonValue
     {
+        public IonType IonType => IonType.Float;
+
         public double value;
 
         public FloatValue()
@@ -92,10 +130,17 @@ namespace Yeast.Ion
         {
             return value.GetHashCode();
         }
+
+        public override string ToString()
+        {
+            return $"FloatValue({value})";
+        }
     }
 
     public class BooleanValue : IIonValue
     {
+        public IonType IonType => IonType.Boolean;
+
         public bool value;
 
         public BooleanValue()
@@ -117,10 +162,17 @@ namespace Yeast.Ion
         {
             return value.GetHashCode();
         }
+
+        public override string ToString()
+        {
+            return $"BooleanValue({value})";
+        }
     }
 
     public class ArrayValue : IIonValue
     {
+        public IonType IonType => IonType.Array;
+
         public List<IIonValue> value;
 
         public ArrayValue()
@@ -135,17 +187,25 @@ namespace Yeast.Ion
 
         public override bool Equals(object obj)
         {
-            return obj is ArrayValue value && ((this.value == null && value.value == null) || this.value.Equals(value.value));
+            return obj is ArrayValue value && ((this.value == null && value.value == null) || this.value.SequenceEqual(value.value));
         }
 
         public override int GetHashCode()
         {
             return value.GetHashCode();
         }
+
+        public override string ToString()
+        {
+            var str = string.Join(", ", value.Select(v => v.ToString()));
+            return $"ArrayValue({str})";
+        }
     }
 
     public class MapValue : IIonValue
     {
+        public IonType IonType => IonType.Map;
+
         public Dictionary<string, IIonValue> value;
 
         public MapValue()
@@ -160,12 +220,17 @@ namespace Yeast.Ion
 
         public override bool Equals(object obj)
         {
-            return obj is MapValue value && ((this.value == null && value.value == null) || this.value.Equals(value.value));
+            return obj is MapValue value && ((this.value == null && value.value == null) || this.value.SequenceEqual(value.value));
         }
 
         public override int GetHashCode()
         {
             return value.GetHashCode();
+        }
+
+        public override string ToString()
+        {
+            return $"MapValue({value})";
         }
     }
 }

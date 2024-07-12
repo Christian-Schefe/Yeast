@@ -87,10 +87,8 @@ namespace Yeast.Json
             }
             else if (value is FloatValue floatValue)
             {
-                if (double.IsNaN(floatValue.value)) return "NaN";
-                else if (double.IsPositiveInfinity(floatValue.value)) return "+Infinity";
-                else if (double.IsNegativeInfinity(floatValue.value)) return "-Infinity";
-                else return floatValue.value.ToString("R", CultureInfo.InvariantCulture);
+                return StringifyFloat(floatValue.value);
+
             }
             else if (value is NullValue)
             {
@@ -108,6 +106,20 @@ namespace Yeast.Json
             {
                 throw new NotImplementedException();
             }
+        }
+
+        private string StringifyFloat(double value)
+        {
+            if (double.IsNaN(value)) return "NaN";
+            else if (double.IsPositiveInfinity(value)) return "+Infinity";
+            else if (double.IsNegativeInfinity(value)) return "-Infinity";
+            var str = value.ToString("R", CultureInfo.InvariantCulture);
+            for (int i = 0; i < str.Length; i++)
+            {
+                char c = str[i];
+                if (c != '-' && !char.IsDigit(c)) return str;
+            }
+            return str + ".0";
         }
 
         private string StringifyArray(List<IIonValue> values, int indentLevel)

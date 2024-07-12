@@ -58,7 +58,7 @@ namespace Yeast.Test
         public void TestArraysStringify()
         {
             Assert.AreEqual("[1,2,3]", JSON.Stringify(new int[] { 1, 2, 3 }));
-            Assert.AreEqual("[1,2.0999999046325684,3.4440000057220459]", JSON.Stringify(new float[] { 1f, 2.1f, 3.444f }));
+            Assert.AreEqual("[1.0,2.0999999046325684,3.4440000057220459]", JSON.Stringify(new float[] { 1f, 2.1f, 3.444f }));
             Assert.AreEqual("[\"Hello\",\"World\"]", JSON.Stringify(new string[] { "Hello", "World" }));
             Assert.AreEqual("[1,2,3]", JSON.Stringify(new List<int>() { 1, 2, 3 }));
             Assert.AreEqual("[{\"key\":1,\"value\":3},{\"key\":2,\"value\":4},{\"key\":4,\"value\":5}]", JSON.Stringify(new Dictionary<int, int>() { { 1, 3 }, { 2, 4 }, { 4, 5 } }));
@@ -79,7 +79,7 @@ namespace Yeast.Test
         public void TestArraysParse()
         {
             Assert.AreEqual(new int[] { 1, 2, 3 }, JSON.Parse<int[]>("[1,2,3]"));
-            Assert.AreEqual(new float[] { 1f, 2.1f, 3.444f }, JSON.Parse<float[]>("[1,2.0999999046325684,3.4440000057220459]"));
+            Assert.AreEqual(new float[] { 1f, 2.1f, 3.444f }, JSON.Parse<float[]>("[1.0,2.0999999046325684,3.4440000057220459]"));
             Assert.AreEqual(new string[] { "Hello", "World" }, JSON.Parse<string[]>("[\"Hello\",\"World\"]"));
             Assert.AreEqual(new List<int>() { 1, 2, 3 }, JSON.Parse<List<int>>("[1,2,3]"));
 
@@ -225,6 +225,33 @@ namespace Yeast.Test
             Test(a);
             Test(b);
             Test(c);
+        }
+
+        [Test]
+        public void TestUnityBuiltins()
+        {
+            Test(new Vector2(1, 2));
+            Test(new Vector3(1, 2, 3));
+            Test(new Vector4(1, 2, 3, 4));
+            Test(new Quaternion(1, 2, 3, 4));
+            Test(new Color(0.5f, 0.5f, 0.5f, 0.5f));
+            Test(new Rect(1, 2, 3, 4));
+            Test(new Bounds(new Vector3(1, 2, 3), new Vector3(4, 5, 6)));
+            Test(new BoundsInt(new Vector3Int(1, 2, 3), new Vector3Int(4, 5, 6)));
+            Test(new RectInt(1, 2, 3, 4));
+            Test(new Vector2Int(1, 2));
+            Test(new Vector3Int(1, 2, 3));
+            Test(new Color32(1, 2, 3, 4));
+        }
+
+        [Test]
+        public void TestSpecialBuiltins()
+        {
+            Test(System.Guid.NewGuid());
+            Test(new System.DateTime(2021, 1, 1, 12, 0, 0));
+            Test(new System.TimeSpan(1, 2, 3, 4));
+            Test(new System.DateTimeOffset(2021, 1, 1, 12, 0, 0, new System.TimeSpan(0, 2, 3, 0)));
+
         }
 
         private void Test<T>(T obj)
