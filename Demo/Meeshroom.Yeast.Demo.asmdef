@@ -1,0 +1,16 @@
+{
+    "name": "Meeshroom.Yeast.Demo",
+    "rootNamespace": "",
+    "references": [
+        "GUID:48cebc76d4331d54aa8a0a08da767c41"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

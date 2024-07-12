@@ -230,7 +230,7 @@ namespace Yeast.Json
 
             string value = text[start..position];
             AdvancePosition(text, ref position);
-            return new StringValue { value = JsonStringUtils.UnescapeString(value) };
+            return new StringValue(JsonStringUtils.UnescapeString(value));
         }
 
         private ArrayValue ParseArray(string text, ref int position)
@@ -246,7 +246,7 @@ namespace Yeast.Json
                 SkipWhitespace(text, ref position);
             }
             AdvancePosition(text, ref position);
-            return new ArrayValue { value = values };
+            return new ArrayValue(values);
         }
 
         private MapValue ParseObject(string text, ref int position)
@@ -267,7 +267,7 @@ namespace Yeast.Json
                 SkipWhitespace(text, ref position);
             }
             AdvancePosition(text, ref position);
-            return new MapValue { value = values };
+            return new MapValue(values);
         }
 
         private BooleanValue ParseBoolean(string text, ref int position)
@@ -275,12 +275,12 @@ namespace Yeast.Json
             if (IsChar('t', text, ref position))
             {
                 ExpectString("true", text, ref position);
-                return new BooleanValue { value = true };
+                return new BooleanValue(true);
             }
             else
             {
                 ExpectString("false", text, ref position);
-                return new BooleanValue { value = false };
+                return new BooleanValue(false);
             }
         }
 
@@ -310,26 +310,26 @@ namespace Yeast.Json
 
             if (value == "+Infinity")
             {
-                return new FloatValue { value = double.PositiveInfinity };
+                return new FloatValue(double.PositiveInfinity);
             }
             else if (value == "-Infinity")
             {
-                return new FloatValue { value = double.NegativeInfinity };
+                return new FloatValue(double.NegativeInfinity);
             }
             else if (value == "NaN")
             {
-                return new FloatValue { value = double.NaN };
+                return new FloatValue(double.NaN);
             }
 
             try
             {
                 if (isFloat)
                 {
-                    return new FloatValue { value = double.Parse(value, CultureInfo.InvariantCulture) };
+                    return new FloatValue(double.Parse(value, CultureInfo.InvariantCulture));
                 }
                 else
                 {
-                    return new IntegerValue { value = long.Parse(value, CultureInfo.InvariantCulture) };
+                    return new IntegerValue(long.Parse(value, CultureInfo.InvariantCulture));
                 }
             }
             catch (FormatException e)

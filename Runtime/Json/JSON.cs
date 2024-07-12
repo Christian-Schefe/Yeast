@@ -1,11 +1,12 @@
 using System;
 using Yeast.Ion;
+using Yeast.Utils;
 
 namespace Yeast.Json
 {
-    public class Json : IFromConverter<(Type, string), object, (FromJsonSettings, FromIonSettings), Exception>, IIntoConverter<object, string, (ToJsonSettings, ToIonSettings), Exception>
+    public class JSON : IFromConverter<(Type, string), object, (FromJsonSettings, FromIonSettings), Exception>, IIntoConverter<object, string, (ToJsonSettings, ToIonSettings), Exception>
     {
-        private static readonly Json instance = new();
+        private static readonly JSON instance = new();
 
         private readonly IonConverter ionConverter = new();
         private readonly JsonConverter jsonConverter = new();

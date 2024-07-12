@@ -23,14 +23,14 @@ namespace Yeast.Ion
     {
         public string value;
 
-        public StringValue(string value)
-        {
-            this.value = value;
-        }
-
         public StringValue()
         {
             value = null;
+        }
+
+        public StringValue(string value)
+        {
+            this.value = value;
         }
 
         public override bool Equals(object obj)
@@ -53,6 +53,11 @@ namespace Yeast.Ion
             value = 0;
         }
 
+        public IntegerValue(long value)
+        {
+            this.value = value;
+        }
+
         public override bool Equals(object obj)
         {
             return obj is IntegerValue value && this.value.Equals(value.value);
@@ -71,6 +76,11 @@ namespace Yeast.Ion
         public FloatValue()
         {
             value = 0;
+        }
+
+        public FloatValue(double value)
+        {
+            this.value = value;
         }
 
         public override bool Equals(object obj)
@@ -93,6 +103,11 @@ namespace Yeast.Ion
             value = false;
         }
 
+        public BooleanValue(bool value)
+        {
+            this.value = value;
+        }
+
         public override bool Equals(object obj)
         {
             return obj is BooleanValue value && this.value.Equals(value.value);
@@ -113,6 +128,11 @@ namespace Yeast.Ion
             value = null;
         }
 
+        public ArrayValue(List<IIonValue> value)
+        {
+            this.value = value;
+        }
+
         public override bool Equals(object obj)
         {
             return obj is ArrayValue value && ((this.value == null && value.value == null) || this.value.Equals(value.value));
@@ -131,6 +151,11 @@ namespace Yeast.Ion
         public MapValue()
         {
             value = null;
+        }
+
+        public MapValue(Dictionary<string, IIonValue> value)
+        {
+            this.value = value;
         }
 
         public override bool Equals(object obj)

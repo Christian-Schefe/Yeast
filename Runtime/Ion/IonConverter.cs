@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Yeast.Utils;
 
 namespace Yeast.Ion
 {
@@ -74,23 +75,28 @@ namespace Yeast.Ion
             }
             Type type = value.GetType();
 
+            if (type.IsSubclassOf(typeof(UnityEngine.Object)))
+            {
+                throw new TypeMismatchException("Cannot stringify instances of UnityEngine.Object.");
+            }
+
             if (value is bool boolValue)
             {
-                result = new BooleanValue { value = boolValue };
+                result = new BooleanValue(boolValue);
             }
             else if (value is string stringValue)
             {
-                result = new StringValue { value = stringValue };
+                result = new StringValue(stringValue);
             }
             else if (TypeUtils.IsIntegerNumber(type) || type == typeof(char) || type.IsEnum)
             {
                 long val = Convert.ToInt64(value);
-                result = new IntegerValue { value = val };
+                result = new IntegerValue(val);
             }
             else if (TypeUtils.IsRationalNumber(type))
             {
                 double val = Convert.ToDouble(value);
-                result = new FloatValue { value = val };
+                result = new FloatValue(val);
             }
             else if (TypeUtils.IsCollection(type, out _))
             {
@@ -106,7 +112,7 @@ namespace Yeast.Ion
                     }
                     intermediateArray.Add(el);
                 }
-                result = new ArrayValue { value = intermediateArray };
+                result = new ArrayValue(intermediateArray);
             }
             else
             {
@@ -123,7 +129,7 @@ namespace Yeast.Ion
                     }
                     intermediateMap.Add(field.Name, el);
                 }
-                result = new MapValue { value = intermediateMap };
+                result = new MapValue(intermediateMap);
             }
             return true;
         }
