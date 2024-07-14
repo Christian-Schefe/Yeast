@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using NUnit.Framework;
-using Yeast.Binary;
 using Yeast.Ion;
 
 namespace Yeast.Test
@@ -95,6 +94,18 @@ namespace Yeast.Test
         }
 
         [Test]
+        public void TestComplicatedArrays()
+        {
+            var b0 = new int[,] { { 0, 3 } };
+            var b1 = new int[,] { { 1, 2, 3, 2 }, { 1, 2, 3, 2 } };
+            var b2 = new int[,] { { 8, 9 }, { 0, -1 }, { 8, 9 } };
+            var arr = new int[,,][,] { { { b1, b2, b2 }, { b1, b0, b0 } }, { { b2, b1, b0 }, { b2, b0, b1 } } };
+
+            var c = new int[][,,][,] { arr, arr, arr };
+            Test(c);
+        }
+
+        [Test]
         public void TestMaps()
         {
             Test(new Dictionary<string, int>());
@@ -105,13 +116,13 @@ namespace Yeast.Test
         {
             var type = val?.GetType() ?? typeof(object);
             var converter = new IonConverter();
-            if (!converter.TryInto(val, out var result, new ToIonSettings() { maxDepth = 100 }, out var exception)) throw exception;
+            var result = converter.Serialize(val, new ToIonSettings() { maxDepth = 100 });
 
             UnityEngine.Debug.Log($"Ion: {result}");
-            if (!converter.TryFrom((result, type), out var val2, new FromIonSettings(), out exception)) throw exception;
+            var val2 = converter.Deserialize(type, result, new FromIonSettings());
             Assert.AreEqual(val, val2);
 
-            if (!converter.TryInto(val2, out var result2, new ToIonSettings() { maxDepth = 100 }, out var exception2)) throw exception2;
+            var result2 = converter.Serialize(val2, new ToIonSettings() { maxDepth = 100 });
             Assert.AreEqual(result, result2);
         }
     }

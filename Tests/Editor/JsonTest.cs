@@ -2,7 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
-using Yeast.Ion;
 using Yeast.Json;
 
 namespace Yeast.Test
@@ -73,6 +72,18 @@ namespace Yeast.Test
             Test(new List<float>() { 1f, 2.1f, 3.444f });
             Test(new List<string>() { "Hello", "World" });
             Test(new List<List<int>>() { new() { 1, 2 }, new() { 3, 4 } });
+        }
+
+        [Test]
+        public void TestComplicatedArrays()
+        {
+            var b0 = new int[,] { { 0, 3 } };
+            var b1 = new int[,] { { 1, 2, 3, 2 }, { 1, 2, 3, 2 } };
+            var b2 = new int[,] { { 8, 9 }, { 0, -1 }, { 8, 9 } };
+            var arr = new int[,,][,] { { { b1, b2, b2 }, { b1, b0, b0 } }, { { b2, b1, b0 }, { b2, b0, b1 } } };
+
+            var c = new int[][,,][,] { arr, arr, arr };
+            Test(c);
         }
         /*
 

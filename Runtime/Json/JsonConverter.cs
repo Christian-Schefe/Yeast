@@ -6,12 +6,12 @@ using Yeast.Ion;
 
 namespace Yeast.Json
 {
-    public struct ToJsonSettings
+    public struct JsonSerializationSettings
     {
         public bool prettyPrint;
         public int indentSize;
     }
-    public struct FromJsonSettings
+    public struct JsonDeserializationSettings
     {
 
     }
@@ -31,44 +31,17 @@ namespace Yeast.Json
         }
     }
 
-    public class JsonConverter : IFromConverter<string, IIonValue, FromJsonSettings, JsonConversionException>, IIntoConverter<IIonValue, string, ToJsonSettings, JsonConversionException>
+    public class JsonConverter : BaseIonConverter<string, JsonSerializationSettings, JsonDeserializationSettings>
     {
-        private FromJsonSettings fromJsonSettings = new();
-        private ToJsonSettings toJsonSettings = new();
-
-        public bool TryFrom(string value, out IIonValue result, FromJsonSettings settings, out JsonConversionException exception)
+        protected override IIonValue Deserialize(string value)
         {
-            fromJsonSettings = settings;
-            try
-            {
-                int position = 0;
-                result = ParseValue(value, ref position);
-                exception = null;
-                return true;
-            }
-            catch (JsonConversionException e)
-            {
-                result = null;
-                exception = e;
-                return false;
-            }
+            int position = 0;
+            return ParseValue(value, ref position);
         }
 
-        public bool TryInto(IIonValue value, out string result, ToJsonSettings settings, out JsonConversionException exception)
+        protected override string Serialize(IIonValue value)
         {
-            toJsonSettings = settings;
-            try
-            {
-                result = Stringify(value, 0);
-                exception = null;
-                return true;
-            }
-            catch (JsonConversionException e)
-            {
-                result = null;
-                exception = e;
-                return false;
-            }
+            return Stringify(value, 0);
         }
 
         private string Stringify(IIonValue value, int indentLevel)
@@ -88,7 +61,6 @@ namespace Yeast.Json
             else if (value is FloatValue floatValue)
             {
                 return StringifyFloat(floatValue.value);
-
             }
             else if (value is NullValue)
             {
@@ -126,10 +98,10 @@ namespace Yeast.Json
         {
             StringBuilder builder = new();
             builder.Append("[");
-            if (toJsonSettings.prettyPrint)
+            if (serializationSettings.prettyPrint)
             {
                 builder.Append("\n");
-                indentLevel += toJsonSettings.indentSize;
+                indentLevel += serializationSettings.indentSize;
                 for (int i = 0; i < indentLevel; i++) builder.Append(" ");
             }
 
@@ -138,7 +110,7 @@ namespace Yeast.Json
                 if (i >= 1)
                 {
                     builder.Append(",");
-                    if (toJsonSettings.prettyPrint)
+                    if (serializationSettings.prettyPrint)
                     {
                         builder.Append("\n");
                         for (int j = 0; j < indentLevel; j++) builder.Append(" ");
@@ -146,9 +118,9 @@ namespace Yeast.Json
                 }
                 builder.Append(Stringify(values[i], indentLevel));
             }
-            if (toJsonSettings.prettyPrint)
+            if (serializationSettings.prettyPrint)
             {
-                indentLevel -= toJsonSettings.indentSize;
+                indentLevel -= serializationSettings.indentSize;
                 builder.Append("\n");
                 for (int i = 0; i < indentLevel; i++) builder.Append(" ");
             }
@@ -160,10 +132,10 @@ namespace Yeast.Json
         {
             StringBuilder builder = new();
             builder.Append("{");
-            if (toJsonSettings.prettyPrint)
+            if (serializationSettings.prettyPrint)
             {
                 builder.Append("\n");
-                indentLevel += toJsonSettings.indentSize;
+                indentLevel += serializationSettings.indentSize;
                 for (int i = 0; i < indentLevel; i++) builder.Append(" ");
             }
 
@@ -173,7 +145,7 @@ namespace Yeast.Json
                 if (count >= 1)
                 {
                     builder.Append(",");
-                    if (toJsonSettings.prettyPrint)
+                    if (serializationSettings.prettyPrint)
                     {
                         builder.Append("\n");
                         for (int j = 0; j < indentLevel; j++) builder.Append(" ");
@@ -181,13 +153,13 @@ namespace Yeast.Json
                 }
                 builder.Append(JsonStringUtils.EscapeString(pair.Key));
                 builder.Append(":");
-                if (toJsonSettings.prettyPrint) builder.Append(" ");
+                if (serializationSettings.prettyPrint) builder.Append(" ");
                 builder.Append(Stringify(pair.Value, indentLevel));
                 count++;
             }
-            if (toJsonSettings.prettyPrint)
+            if (serializationSettings.prettyPrint)
             {
-                indentLevel -= toJsonSettings.indentSize;
+                indentLevel -= serializationSettings.indentSize;
                 builder.Append("\n");
                 for (int i = 0; i < indentLevel; i++) builder.Append(" ");
             }

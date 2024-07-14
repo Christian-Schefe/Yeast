@@ -107,15 +107,14 @@ namespace Yeast.Test
         private void Test(IIonValue val)
         {
             var converter = new BinaryConverter();
-            if (!converter.TryInto(val, out var result, new ToBinarySettings(), out var exception)) throw exception;
+            var result = converter.Serialize(val, new BinarySerializationSettings());
 
             //Debug.Log($"Binary: {string.Join(", ", result)}");
-            if (!converter.TryFrom(result, out var val2, new FromBinarySettings(), out exception)) throw exception;
+            var val2 = converter.Deserialize(result, new BinaryDeserializationSettings());
             Assert.AreEqual(val, val2);
 
-            if (!converter.TryInto(val2, out var result2, new ToBinarySettings(), out var exception2)) throw exception2;
+            var result2 = converter.Serialize(val2, new BinarySerializationSettings());
             Assert.AreEqual(result, result2);
-
         }
     }
 }

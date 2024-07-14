@@ -108,14 +108,14 @@ namespace Yeast.Test
         private void Test(IIonValue val)
         {
             var converter = new JsonConverter();
-            if (!converter.TryInto(val, out var result, new ToJsonSettings() { indentSize = 0, prettyPrint = false }, out var exception)) throw exception;
+            var result = converter.Serialize(val, new JsonSerializationSettings() { indentSize = 0, prettyPrint = false });
 
             //Debug.Log($"Json: {result}");
-            if (!converter.TryFrom(result, out var val2, new FromJsonSettings(), out exception)) throw exception;
+            var val2 = converter.Deserialize(result, new JsonDeserializationSettings());
 
             Assert.AreEqual(val, val2);
 
-            if (!converter.TryInto(val2, out var result2, new ToJsonSettings() { indentSize = 0, prettyPrint = false }, out var exception2)) throw exception2;
+            var result2 = converter.Serialize(val2, new JsonSerializationSettings() { indentSize = 0, prettyPrint = false });
             Assert.AreEqual(result, result2);
 
         }
@@ -123,7 +123,7 @@ namespace Yeast.Test
         private void TestParse(string val, IIonValue expected)
         {
             var converter = new JsonConverter();
-            if (!converter.TryFrom(val, out var ionValue, new FromJsonSettings(), out var exception)) throw exception;
+            var ionValue = converter.Deserialize(val, new JsonDeserializationSettings());
 
             Assert.AreEqual(expected, ionValue);
         }

@@ -4,62 +4,24 @@ using Yeast.Ion;
 
 namespace Yeast.Binary
 {
-    public struct ToBinarySettings
-    {
+    public struct BinarySerializationSettings { }
 
-    }
-
-    public struct FromBinarySettings
-    {
-
-    }
+    public struct BinaryDeserializationSettings { }
 
     public class BinaryConversionException : Exception
     {
         public BinaryConversionException(string message) : base(message) { }
     }
 
-    public class BinaryConverter : IFromConverter<byte[], IIonValue, FromBinarySettings, BinaryConversionException>, IIntoConverter<IIonValue, byte[], ToBinarySettings, BinaryConversionException>
+    public class BinaryConverter : BaseIonConverter<byte[], BinarySerializationSettings, BinaryDeserializationSettings>
     {
-        private FromBinarySettings fromBinarySettings = new();
-        private ToBinarySettings toBinarySettings = new();
-
-        public bool TryFrom(byte[] value, out IIonValue result, FromBinarySettings settings, out BinaryConversionException exception)
+        protected override IIonValue Deserialize(byte[] value)
         {
-            fromBinarySettings = settings;
-            try
-            {
-                int offset = 0;
-                result = Deserialize(value, ref offset);
-                exception = null;
-                return true;
-            }
-            catch (BinaryConversionException e)
-            {
-                result = null;
-                exception = e;
-                return false;
-            }
+            int offset = 0;
+            return DeserializeInternal(value, ref offset);
         }
 
-        public bool TryInto(IIonValue value, out byte[] result, ToBinarySettings settings, out BinaryConversionException exception)
-        {
-            toBinarySettings = settings;
-            try
-            {
-                result = Serialize(value);
-                exception = null;
-                return true;
-            }
-            catch (BinaryConversionException e)
-            {
-                result = null;
-                exception = e;
-                return false;
-            }
-        }
-
-        private IIonValue Deserialize(byte[] value, ref int offset)
+        private IIonValue DeserializeInternal(byte[] value, ref int offset)
         {
             byte type = value[offset];
             offset += 1;
@@ -108,7 +70,7 @@ namespace Yeast.Binary
             List<IIonValue> values = new();
             for (int i = 0; i < length; i++)
             {
-                values.Add(Deserialize(value, ref offset));
+                values.Add(DeserializeInternal(value, ref offset));
             }
             return new ArrayValue(values);
         }
@@ -120,12 +82,12 @@ namespace Yeast.Binary
             for (int i = 0; i < length; i++)
             {
                 string key = DeserializeString(value, ref offset);
-                values.Add(key, Deserialize(value, ref offset));
+                values.Add(key, DeserializeInternal(value, ref offset));
             }
             return new MapValue(values);
         }
 
-        private byte[] Serialize(IIonValue value)
+        protected override byte[] Serialize(IIonValue value)
         {
             List<byte> result = new() { (byte)value.IonType };
             if (value is StringValue stringValue)
