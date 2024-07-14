@@ -9,15 +9,16 @@ namespace Yeast.Test
     public class JsonConverterTest
     {
         [Test]
-        public void TestAll()
+        public void TestSpecialStringsStringify()
         {
-            TestNull();
-            TestIntegers();
-            TestStrings();
-            TestFloats();
-            TestBooleans();
-            TestArrays();
-            TestMaps();
+            Assert.AreEqual("\"\\0\"", JSON.Stringify("\0"));
+            Assert.AreEqual("\"\\u0001\"", JSON.Stringify("\x01"));
+            Assert.AreEqual("\"\\n\"", JSON.Stringify("\n"));
+            Assert.AreEqual("\"\\r\"", JSON.Stringify("\r"));
+            Assert.AreEqual("\"\\t\"", JSON.Stringify("\t"));
+            Assert.AreEqual("\"\\b\"", JSON.Stringify("\b"));
+            Assert.AreEqual("\"\\\\\"", JSON.Stringify("\\"));
+            Assert.AreEqual("\"\\\"\"", JSON.Stringify("\""));
         }
 
         [Test]
@@ -47,6 +48,15 @@ namespace Yeast.Test
             Test(new StringValue("1234567890"));
             Test(new StringValue("Hello\nWorld!"));
             Test(new StringValue("Hello\t\0\r\\\"World!"));
+            Test(new StringValue("\0"));
+            Test(new StringValue("\x01"));
+            Test(new StringValue("\0\a\b\f\r\t\n\v\u1234"));
+            Test(new StringValue("\n"));
+            Test(new StringValue("\r"));
+            Test(new StringValue("\t"));
+            Test(new StringValue("\b"));
+            Test(new StringValue("\\"));
+            Test(new StringValue("\""));
         }
 
         [Test]
@@ -63,6 +73,15 @@ namespace Yeast.Test
             Test(new FloatValue(-1E20));
             Test(new FloatValue(float.MaxValue));
             Test(new FloatValue(float.MinValue));
+
+            Test(new IntegerValue(1_000_000_000_000_000));
+            Test(new FloatValue(1_000_000_000_000_000_000_000f));
+            Test(new FloatValue(-1_000_000_000_000_000_000_000d));
+            Test(new FloatValue(double.Epsilon));
+            Test(new FloatValue(double.MaxValue));
+            Test(new FloatValue(double.NaN));
+            Test(new FloatValue(double.NegativeInfinity));
+            Test(new FloatValue(double.PositiveInfinity));
 
             TestParse("1E20", new FloatValue(1e20));
         }

@@ -3,6 +3,9 @@ using Yeast.Ion;
 
 namespace Yeast.Json
 {
+    /// <summary>
+    /// Converts objects to and from JSON format.
+    /// </summary>
     public sealed class JSON : BaseConverter<string, JsonConverter, JsonSerializationSettings, JsonDeserializationSettings>
     {
         private static readonly JSON instance = new();
@@ -29,32 +32,26 @@ namespace Yeast.Json
             };
         }
 
-        public static string Stringify<T>(T value, JsonStringifyMode mode = JsonStringifyMode.Compact)
+        /// <summary>
+        /// Converts an object to a JSON string.
+        /// </summary>
+        public static string Stringify(object value, JsonStringifyMode mode = JsonStringifyMode.Compact)
         {
             var settings = CreateSettings(mode);
             return instance.Serialize(value, settings.Item2, settings.Item1);
         }
 
-        public static bool TryStringify<T>(T value, out string result, JsonStringifyMode mode = JsonStringifyMode.Compact)
-        {
-            try
-            {
-                result = Stringify(value, mode);
-                return true;
-            }
-            catch
-            {
-                result = default;
-                return false;
-            }
-        }
-
+        /// <summary>
+        /// Converts a JSON string to an object.
+        /// </summary>
         public static T Parse<T>(string text, JsonParseMode mode = JsonParseMode.Exact)
         {
-            var settings = CreateSettings(mode);
-            return (T)instance.Deserialize(typeof(T), text, settings.Item2, settings.Item1);
+            return (T)Parse(typeof(T), text, mode);
         }
 
+        /// <summary>
+        /// Tries to convert a JSON string to an object.
+        /// </summary>
         public static bool TryParse<T>(string text, out T result, JsonParseMode mode = JsonParseMode.Exact)
         {
             try
@@ -68,13 +65,46 @@ namespace Yeast.Json
                 return false;
             }
         }
+
+        /// <summary>
+        /// Converts a JSON string to an object.
+        /// </summary>
+        public static object Parse(Type type, string text, JsonParseMode mode = JsonParseMode.Exact)
+        {
+            var settings = CreateSettings(mode);
+            return instance.Deserialize(type, text, settings.Item2, settings.Item1);
+        }
+
+        /// <summary>
+        /// Tries to convert a JSON string to an object.
+        /// </summary>
+        public static bool TryParse(Type type, string text, out object result, JsonParseMode mode = JsonParseMode.Exact)
+        {
+            try
+            {
+                result = Parse(type, text, mode);
+                return true;
+            }
+            catch
+            {
+                result = default;
+                return false;
+            }
+        }
     }
 
+    /// <summary>
+    /// Modes for converting objects to JSON strings.
+    /// </summary>
     public enum JsonStringifyMode
     {
         Compact,
         Pretty
     }
+
+    /// <summary>
+    /// Modes for converting JSON strings to objects.
+    /// </summary>
     public enum JsonParseMode
     {
         Exact,

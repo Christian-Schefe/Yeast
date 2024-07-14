@@ -1,8 +1,12 @@
 using System;
 using Yeast.Ion;
+using Yeast.Json;
 
 namespace Yeast.Binary
 {
+    /// <summary>
+    /// Converts objects to and from binary format.
+    /// </summary>
     public sealed class BINARY : BaseConverter<byte[], BinaryConverter, BinarySerializationSettings, BinaryDeserializationSettings>
     {
         private static readonly BINARY instance = new();
@@ -19,17 +23,31 @@ namespace Yeast.Binary
             return (new BinaryDeserializationSettings(), new FromIonSettings { ignoreExtraFields = false, useDefaultSetting = FromIonSettings.UseDefaultSetting.Never });
         }
 
-        public static byte[] Serialize<T>(T value)
+        /// <summary>
+        /// Converts an object to a byte array.
+        /// </summary>
+        public static byte[] Serialize(object value)
         {
             var settings = CreateSerializationSettings();
             return instance.Serialize(value, settings.Item2, settings.Item1);
         }
 
-        public static bool TrySerialize<T>(T value, out byte[] result)
+        /// <summary>
+        /// Converts a byte array to an object.
+        /// </summary>
+        public static T Deserialize<T>(byte[] text)
+        {
+            return (T)Deserialize(typeof(T), text);
+        }
+
+        /// <summary>
+        /// Tries to convert a byte array to an object.
+        /// </summary>
+        public static bool TryDeserialize<T>(byte[] text, out T result)
         {
             try
             {
-                result = Serialize(value);
+                result = Deserialize<T>(text);
                 return true;
             }
             catch
@@ -39,17 +57,23 @@ namespace Yeast.Binary
             }
         }
 
-        public static T Deserialize<T>(byte[] text)
+        /// <summary>
+        /// Converts a byte array to an object.
+        /// </summary>
+        public static object Deserialize(Type type, byte[] bytes)
         {
             var settings = CreateDeserializationSettings();
-            return (T)instance.Deserialize(typeof(T), text, settings.Item2, settings.Item1);
+            return instance.Deserialize(type, bytes, settings.Item2, settings.Item1);
         }
 
-        public static bool TryDeserialize<T>(byte[] text, out T result)
+        /// <summary>
+        /// Tries to convert a byte array to an object.
+        /// </summary>
+        public static bool TryDeserialize(Type type, byte[] bytes, out object result)
         {
             try
             {
-                result = Deserialize<T>(text);
+                result = Deserialize(type, bytes);
                 return true;
             }
             catch

@@ -114,7 +114,6 @@ namespace Yeast.Ion
             }
         }
 
-
         protected override object Deserialize(Type type, IIonValue value)
         {
             if (type == null)

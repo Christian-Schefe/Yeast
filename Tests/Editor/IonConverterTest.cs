@@ -9,18 +9,6 @@ namespace Yeast.Test
     public class IonConverterTest
     {
         [Test]
-        public void TestAll()
-        {
-            TestNull();
-            TestIntegers();
-            TestStrings();
-            TestFloats();
-            TestBooleans();
-            TestArrays();
-            TestMaps();
-        }
-
-        [Test]
         public void TestNull()
         {
             Test(null);
@@ -63,6 +51,8 @@ namespace Yeast.Test
             Test(-1E20);
             Test(float.MaxValue);
             Test(float.MinValue);
+            Test(15m);
+            Test(decimal.MaxValue);
         }
 
         [Test]
