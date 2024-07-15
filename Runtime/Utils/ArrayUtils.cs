@@ -52,7 +52,7 @@ namespace Yeast.Utils
         private static void GetLengthsInIonValue(ArrayValue ionValue, int rank, int[] lengths, int dimension)
         {
             lengths[dimension] = ionValue.value.Length;
-            if (dimension < rank - 1)
+            if (dimension < rank - 1 && ionValue.value.Length > 0)
             {
                 GetLengthsInIonValue((ArrayValue)ionValue.value[0], rank, lengths, dimension + 1);
             }
