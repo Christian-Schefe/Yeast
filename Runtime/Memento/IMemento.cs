@@ -1,33 +1,33 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Yeast.Ion
+namespace Yeast.Memento
 {
-    public interface IIonValue
+    public interface IMemento
     {
-        public IonType IonType { get; }
+        public MementoType MementoType { get; }
     }
 
-    public enum IonType : byte
+    public enum MementoType : byte
     {
         Null,
         String,
         Integer,
-        Float,
-        Boolean,
+        Decimal,
+        Bool,
         Array,
-        Map
+        Dict
     }
 
-    public class NullValue : IIonValue
+    public class NullMemento : IMemento
     {
-        public IonType IonType => IonType.Null;
+        public MementoType MementoType => MementoType.Null;
 
-        public NullValue() { }
+        public NullMemento() { }
 
         public override bool Equals(object obj)
         {
-            return obj is NullValue;
+            return obj is NullMemento;
         }
 
         public override int GetHashCode()
@@ -37,29 +37,29 @@ namespace Yeast.Ion
 
         public override string ToString()
         {
-            return "NullValue()";
+            return "NullMemento()";
         }
     }
 
-    public class StringValue : IIonValue
+    public class StringMemento : IMemento
     {
-        public IonType IonType => IonType.String;
+        public MementoType MementoType => MementoType.String;
 
         public string value;
 
-        public StringValue()
+        public StringMemento()
         {
             value = null;
         }
 
-        public StringValue(string value)
+        public StringMemento(string value)
         {
             this.value = value;
         }
 
         public override bool Equals(object obj)
         {
-            return obj is StringValue value && ((this.value == null && value.value == null) || this.value.Equals(value.value));
+            return obj is StringMemento value && ((this.value == null && value.value == null) || this.value.Equals(value.value));
         }
 
         public override int GetHashCode()
@@ -69,29 +69,29 @@ namespace Yeast.Ion
 
         public override string ToString()
         {
-            return $"StringValue(\"{value}\")";
+            return $"StringMemento(\"{value}\")";
         }
     }
 
-    public class IntegerValue : IIonValue
+    public class IntegerMemento : IMemento
     {
-        public IonType IonType => IonType.Integer;
+        public MementoType MementoType => MementoType.Integer;
 
         public long value;
 
-        public IntegerValue()
+        public IntegerMemento()
         {
             value = 0;
         }
 
-        public IntegerValue(long value)
+        public IntegerMemento(long value)
         {
             this.value = value;
         }
 
         public override bool Equals(object obj)
         {
-            return obj is IntegerValue value && this.value.Equals(value.value);
+            return obj is IntegerMemento value && this.value.Equals(value.value);
         }
 
         public override int GetHashCode()
@@ -101,29 +101,29 @@ namespace Yeast.Ion
 
         public override string ToString()
         {
-            return $"IntegerValue({value})";
+            return $"IntegerMemento({value})";
         }
     }
 
-    public class FloatValue : IIonValue
+    public class DecimalMemento : IMemento
     {
-        public IonType IonType => IonType.Float;
+        public MementoType MementoType => MementoType.Decimal;
 
         public double value;
 
-        public FloatValue()
+        public DecimalMemento()
         {
             value = 0;
         }
 
-        public FloatValue(double value)
+        public DecimalMemento(double value)
         {
             this.value = value;
         }
 
         public override bool Equals(object obj)
         {
-            return obj is FloatValue value && this.value.Equals(value.value);
+            return obj is DecimalMemento value && this.value.Equals(value.value);
         }
 
         public override int GetHashCode()
@@ -133,29 +133,29 @@ namespace Yeast.Ion
 
         public override string ToString()
         {
-            return $"FloatValue({value})";
+            return $"FloatMemento({value})";
         }
     }
 
-    public class BooleanValue : IIonValue
+    public class BoolMemento : IMemento
     {
-        public IonType IonType => IonType.Boolean;
+        public MementoType MementoType => MementoType.Bool;
 
         public bool value;
 
-        public BooleanValue()
+        public BoolMemento()
         {
             value = false;
         }
 
-        public BooleanValue(bool value)
+        public BoolMemento(bool value)
         {
             this.value = value;
         }
 
         public override bool Equals(object obj)
         {
-            return obj is BooleanValue value && this.value.Equals(value.value);
+            return obj is BoolMemento value && this.value.Equals(value.value);
         }
 
         public override int GetHashCode()
@@ -165,34 +165,34 @@ namespace Yeast.Ion
 
         public override string ToString()
         {
-            return $"BooleanValue({value})";
+            return $"BooleanMemento({value})";
         }
     }
 
-    public class ArrayValue : IIonValue
+    public class ArrayMemento : IMemento
     {
-        public IonType IonType => IonType.Array;
+        public MementoType MementoType => MementoType.Array;
 
-        public IIonValue[] value;
+        public IMemento[] value;
 
-        public ArrayValue()
+        public ArrayMemento()
         {
             value = null;
         }
 
-        public ArrayValue(List<IIonValue> value)
+        public ArrayMemento(List<IMemento> value)
         {
             this.value = value.ToArray();
         }
 
-        public ArrayValue(IIonValue[] value)
+        public ArrayMemento(IMemento[] value)
         {
             this.value = value;
         }
 
         public override bool Equals(object obj)
         {
-            return obj is ArrayValue value && ((this.value == null && value.value == null) || this.value.SequenceEqual(value.value));
+            return obj is ArrayMemento value && ((this.value == null && value.value == null) || this.value.SequenceEqual(value.value));
         }
 
         public override int GetHashCode()
@@ -203,29 +203,29 @@ namespace Yeast.Ion
         public override string ToString()
         {
             var str = value == null ? "" : string.Join(", ", value.Select(v => v.ToString()));
-            return $"ArrayValue({str})";
+            return $"ArrayMemento({str})";
         }
     }
 
-    public class MapValue : IIonValue
+    public class DictMemento : IMemento
     {
-        public IonType IonType => IonType.Map;
+        public MementoType MementoType => MementoType.Dict;
 
-        public Dictionary<string, IIonValue> value;
+        public Dictionary<string, IMemento> value;
 
-        public MapValue()
+        public DictMemento()
         {
             value = null;
         }
 
-        public MapValue(Dictionary<string, IIonValue> value)
+        public DictMemento(Dictionary<string, IMemento> value)
         {
             this.value = value;
         }
 
         public override bool Equals(object obj)
         {
-            return obj is MapValue value && ((this.value == null && value.value == null) || this.value.SequenceEqual(value.value));
+            return obj is DictMemento value && ((this.value == null && value.value == null) || this.value.SequenceEqual(value.value));
         }
 
         public override int GetHashCode()
@@ -236,7 +236,7 @@ namespace Yeast.Ion
         public override string ToString()
         {
             var str = string.Join(", ", value.Select(v => $"{v.Key}: {v.Value}"));
-            return $"MapValue({str})";
+            return $"MapMemento({str})";
         }
     }
 }

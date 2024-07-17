@@ -4,6 +4,8 @@ using System.Linq;
 
 namespace Yeast.Test
 {
+    [HasDerivedClass(typeof(Student), "Student")]
+    [HasDerivedClass(typeof(Professor), "Professor")]
     public abstract class Person
     {
         public string name;
@@ -44,6 +46,7 @@ namespace Yeast.Test
         }
     }
 
+    [IsDerivedClass(typeof(Person))]
     public class Student : Person
     {
         public int studentID;
@@ -80,21 +83,55 @@ namespace Yeast.Test
         }
     }
 
+    [IsDerivedClass(typeof(Person))]
+    public class Professor : Person
+    {
+        public int professorID;
+
+        public Professor() : base("Unknown", 0, 0)
+        {
+            professorID = 0;
+        }
+
+        public Professor(string name, int age, float height, int professorID) : base(name, age, height)
+        {
+            this.professorID = professorID;
+        }
+
+        public override string ToString()
+        {
+            return base.ToString() + " " + professorID;
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj == null || GetType() != obj.GetType())
+            {
+                return false;
+            }
+
+            Professor s = (Professor)obj;
+            return base.Equals(s) && (professorID == s.professorID);
+        }
+
+        public override int GetHashCode()
+        {
+            return System.HashCode.Combine(base.GetHashCode(), professorID);
+        }
+    }
+
     public class School
     {
         public string name;
-        public List<Person> students;
+        public List<Student> students;
+        public List<Person> people;
         public School() { }
 
-        public School(string name)
+        public School(string name, List<Student> students, List<Person> people)
         {
             this.name = name;
-            students = new List<Person>();
-        }
-
-        public void AddStudent(Person student)
-        {
-            students.Add(student);
+            this.students = students;
+            this.people = people;
         }
 
         public override string ToString()
@@ -115,7 +152,7 @@ namespace Yeast.Test
             }
 
             School s = (School)obj;
-            return (name == s.name) && students.SequenceEqual(s.students);
+            return (name == s.name) && (students == s.students || students.SequenceEqual(s.students)) && (people == s.people || people.SequenceEqual(s.people));
         }
 
         public override int GetHashCode()

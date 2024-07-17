@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 
 namespace Yeast.Utils
@@ -145,6 +146,31 @@ namespace Yeast.Utils
                 }
             }
             return writableProperties.ToArray();
+        }
+
+        public static bool HasAttribute<T>(Type type, out List<T> attribute) where T : Attribute
+        {
+            var attrs = type.GetCustomAttributes(typeof(T));
+            if (attrs != null)
+            {
+                var list = new List<T>(attrs.Cast<T>());
+                attribute = list;
+                return list.Count > 0;
+            }
+            attribute = default;
+            return false;
+        }
+
+        public static bool HasSingleAttribute<T>(Type type, out T attribute) where T : Attribute
+        {
+            var attrs = type.GetCustomAttribute(typeof(T));
+            if (attrs != null)
+            {
+                attribute = (T)attrs;
+                return true;
+            }
+            attribute = default;
+            return false;
         }
     }
 }

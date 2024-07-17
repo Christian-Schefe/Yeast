@@ -2,7 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
-using Yeast.Ion;
+using Yeast.Memento;
+using Yeast.Utils;
 
 namespace Yeast.Json
 {
@@ -31,48 +32,52 @@ namespace Yeast.Json
         }
     }
 
-    public class JsonConverter : BaseIonConverter<string, JsonSerializationSettings, JsonDeserializationSettings>
+    public class JsonConverter : BaseMementoConverter<string, JsonSerializationSettings, JsonDeserializationSettings>
     {
-        protected override IIonValue Deserialize(string value)
+        protected override IMemento Deserialize(string value)
         {
             int position = 0;
             return ParseValue(value, ref position);
         }
 
-        protected override string Serialize(IIonValue value)
+        protected override string Serialize(IMemento value)
         {
-            return Stringify(value, 0);
+            StringBuilder result = new();
+            Stringify(result, value, 0);
+            return result.ToString();
         }
 
-        private string Stringify(IIonValue value, int indentLevel)
+        private void Stringify(StringBuilder result, IMemento value, int indentLevel)
         {
-            if (value is StringValue stringValue)
+            if (value is StringMemento stringValue)
             {
-                return JsonStringUtils.EscapeString(stringValue.value);
+                result.Append('"');
+                result.Append(StringUtils.EscapeString(stringValue.value));
+                result.Append('"');
             }
-            else if (value is IntegerValue integerValue)
+            else if (value is IntegerMemento integerValue)
             {
-                return integerValue.value.ToString(CultureInfo.InvariantCulture);
+                result.Append(StringUtils.LongToString(integerValue.value));
             }
-            else if (value is BooleanValue booleanValue)
+            else if (value is BoolMemento booleanValue)
             {
-                return booleanValue.value ? "true" : "false";
+                result.Append(booleanValue.value ? "true" : "false");
             }
-            else if (value is FloatValue floatValue)
+            else if (value is DecimalMemento floatValue)
             {
-                return StringifyFloat(floatValue.value);
+                StringifyFloat(result, floatValue.value);
             }
-            else if (value is NullValue)
+            else if (value is NullMemento)
             {
-                return "null";
+                result.Append("null");
             }
-            else if (value is ArrayValue arrayValue)
+            else if (value is ArrayMemento arrayValue)
             {
-                return StringifyArray(arrayValue.value, indentLevel);
+                StringifyArray(result, arrayValue.value, indentLevel);
             }
-            else if (value is MapValue objectValue)
+            else if (value is DictMemento objectValue)
             {
-                return StringifyMap(objectValue.value, indentLevel);
+                StringifyDict(result, objectValue.value, indentLevel);
             }
             else
             {
@@ -80,63 +85,54 @@ namespace Yeast.Json
             }
         }
 
-        private string StringifyFloat(double value)
+        private void StringifyFloat(StringBuilder result, double value)
         {
-            if (double.IsNaN(value)) return "NaN";
-            else if (double.IsPositiveInfinity(value)) return "+Infinity";
-            else if (double.IsNegativeInfinity(value)) return "-Infinity";
-            var str = value.ToString("R", CultureInfo.InvariantCulture);
-            for (int i = 0; i < str.Length; i++)
-            {
-                char c = str[i];
-                if (c != '-' && !char.IsDigit(c)) return str;
-            }
-            return str + ".0";
+            if (double.IsNaN(value)) result.Append("NaN");
+            else if (double.IsPositiveInfinity(value)) result.Append("+Infinity");
+            else if (double.IsNegativeInfinity(value)) result.Append("-Infinity");
+            else result.Append(StringUtils.DoubleToString(value));
         }
 
-        private string StringifyArray(IIonValue[] values, int indentLevel)
+        private void StringifyArray(StringBuilder result, IMemento[] values, int indentLevel)
         {
-            StringBuilder builder = new();
-            builder.Append("[");
+            result.Append("[");
             if (serializationSettings.prettyPrint)
             {
-                builder.Append("\n");
+                result.Append("\n");
                 indentLevel += serializationSettings.indentSize;
-                for (int i = 0; i < indentLevel; i++) builder.Append(" ");
+                for (int i = 0; i < indentLevel; i++) result.Append(" ");
             }
 
             for (int i = 0; i < values.Length; i++)
             {
                 if (i >= 1)
                 {
-                    builder.Append(",");
+                    result.Append(",");
                     if (serializationSettings.prettyPrint)
                     {
-                        builder.Append("\n");
-                        for (int j = 0; j < indentLevel; j++) builder.Append(" ");
+                        result.Append("\n");
+                        for (int j = 0; j < indentLevel; j++) result.Append(" ");
                     }
                 }
-                builder.Append(Stringify(values[i], indentLevel));
+                Stringify(result, values[i], indentLevel);
             }
             if (serializationSettings.prettyPrint)
             {
                 indentLevel -= serializationSettings.indentSize;
-                builder.Append("\n");
-                for (int i = 0; i < indentLevel; i++) builder.Append(" ");
+                result.Append("\n");
+                for (int i = 0; i < indentLevel; i++) result.Append(" ");
             }
-            builder.Append("]");
-            return builder.ToString();
+            result.Append("]");
         }
 
-        private string StringifyMap(Dictionary<string, IIonValue> values, int indentLevel)
+        private void StringifyDict(StringBuilder result, Dictionary<string, IMemento> values, int indentLevel)
         {
-            StringBuilder builder = new();
-            builder.Append("{");
+            result.Append("{");
             if (serializationSettings.prettyPrint)
             {
-                builder.Append("\n");
+                result.Append("\n");
                 indentLevel += serializationSettings.indentSize;
-                for (int i = 0; i < indentLevel; i++) builder.Append(" ");
+                for (int i = 0; i < indentLevel; i++) result.Append(" ");
             }
 
             int count = 0;
@@ -144,30 +140,31 @@ namespace Yeast.Json
             {
                 if (count >= 1)
                 {
-                    builder.Append(",");
+                    result.Append(",");
                     if (serializationSettings.prettyPrint)
                     {
-                        builder.Append("\n");
-                        for (int j = 0; j < indentLevel; j++) builder.Append(" ");
+                        result.Append("\n");
+                        for (int j = 0; j < indentLevel; j++) result.Append(" ");
                     }
                 }
-                builder.Append(JsonStringUtils.EscapeString(pair.Key));
-                builder.Append(":");
-                if (serializationSettings.prettyPrint) builder.Append(" ");
-                builder.Append(Stringify(pair.Value, indentLevel));
+                result.Append('"');
+                result.Append(StringUtils.EscapeString(pair.Key));
+                result.Append('"');
+                result.Append(':');
+                if (serializationSettings.prettyPrint) result.Append(" ");
+                Stringify(result, pair.Value, indentLevel);
                 count++;
             }
             if (serializationSettings.prettyPrint)
             {
                 indentLevel -= serializationSettings.indentSize;
-                builder.Append("\n");
-                for (int i = 0; i < indentLevel; i++) builder.Append(" ");
+                result.Append("\n");
+                for (int i = 0; i < indentLevel; i++) result.Append(" ");
             }
-            builder.Append("}");
-            return builder.ToString();
+            result.Append("}");
         }
 
-        private IIonValue ParseValue(string text, ref int position)
+        private IMemento ParseValue(string text, ref int position)
         {
             SkipWhitespace(text, ref position);
             CheckPosition(text, ref position);
@@ -198,7 +195,7 @@ namespace Yeast.Json
         }
 
 
-        private StringValue ParseString(string text, ref int position)
+        private StringMemento ParseString(string text, ref int position)
         {
             ExpectChar('"', text, ref position);
             int start = position;
@@ -214,13 +211,13 @@ namespace Yeast.Json
 
             string value = text[start..position];
             AdvancePosition(text, ref position);
-            return new StringValue(JsonStringUtils.UnescapeString(value));
+            return new StringMemento(StringUtils.UnescapeString(value));
         }
 
-        private ArrayValue ParseArray(string text, ref int position)
+        private ArrayMemento ParseArray(string text, ref int position)
         {
             ExpectChar('[', text, ref position);
-            List<IIonValue> values = new();
+            List<IMemento> values = new();
             SkipWhitespace(text, ref position);
             while (!IsChar(']', text, ref position))
             {
@@ -230,13 +227,13 @@ namespace Yeast.Json
                 SkipWhitespace(text, ref position);
             }
             AdvancePosition(text, ref position);
-            return new ArrayValue(values);
+            return new ArrayMemento(values);
         }
 
-        private MapValue ParseObject(string text, ref int position)
+        private DictMemento ParseObject(string text, ref int position)
         {
             ExpectChar('{', text, ref position);
-            Dictionary<string, IIonValue> values = new();
+            Dictionary<string, IMemento> values = new();
             SkipWhitespace(text, ref position);
             while (!IsChar('}', text, ref position))
             {
@@ -246,35 +243,36 @@ namespace Yeast.Json
                 SkipWhitespace(text, ref position);
                 ExpectChar(':', text, ref position);
                 SkipWhitespace(text, ref position);
-                IIonValue value = ParseValue(text, ref position);
+                IMemento value = ParseValue(text, ref position);
                 values.Add(key, value);
                 SkipWhitespace(text, ref position);
             }
             AdvancePosition(text, ref position);
-            return new MapValue(values);
+
+            return new DictMemento(values);
         }
 
-        private BooleanValue ParseBoolean(string text, ref int position)
+        private BoolMemento ParseBoolean(string text, ref int position)
         {
             if (IsChar('t', text, ref position))
             {
                 ExpectString("true", text, ref position);
-                return new BooleanValue(true);
+                return new BoolMemento(true);
             }
             else
             {
                 ExpectString("false", text, ref position);
-                return new BooleanValue(false);
+                return new BoolMemento(false);
             }
         }
 
-        private NullValue ParseNull(string text, ref int position)
+        private NullMemento ParseNull(string text, ref int position)
         {
             ExpectString("null", text, ref position);
-            return new NullValue();
+            return new NullMemento();
         }
 
-        private IIonValue ParseNumber(string text, ref int position)
+        private IMemento ParseNumber(string text, ref int position)
         {
             int start = position;
             bool isFloat = false;
@@ -294,26 +292,26 @@ namespace Yeast.Json
 
             if (value == "+Infinity")
             {
-                return new FloatValue(double.PositiveInfinity);
+                return new DecimalMemento(double.PositiveInfinity);
             }
             else if (value == "-Infinity")
             {
-                return new FloatValue(double.NegativeInfinity);
+                return new DecimalMemento(double.NegativeInfinity);
             }
             else if (value == "NaN")
             {
-                return new FloatValue(double.NaN);
+                return new DecimalMemento(double.NaN);
             }
 
             try
             {
                 if (isFloat)
                 {
-                    return new FloatValue(double.Parse(value, CultureInfo.InvariantCulture));
+                    return new DecimalMemento(StringUtils.StringToDouble(value));
                 }
                 else
                 {
-                    return new IntegerValue(long.Parse(value, CultureInfo.InvariantCulture));
+                    return new IntegerMemento(StringUtils.StringToLong(value));
                 }
             }
             catch (FormatException e)
@@ -367,95 +365,6 @@ namespace Yeast.Json
             {
                 AdvancePosition(text, ref position);
             }
-        }
-    }
-
-    public static class JsonStringUtils
-    {
-        public static string EscapeString(string input)
-        {
-            StringBuilder literal = new(input.Length + 2);
-            literal.Append("\"");
-            foreach (var c in input)
-            {
-                switch (c)
-                {
-                    case '\"': literal.Append("\\\""); break;
-                    case '\\': literal.Append(@"\\"); break;
-                    case '\0': literal.Append(@"\0"); break;
-                    case '\a': literal.Append(@"\a"); break;
-                    case '\b': literal.Append(@"\b"); break;
-                    case '\f': literal.Append(@"\f"); break;
-                    case '\n': literal.Append(@"\n"); break;
-                    case '\r': literal.Append(@"\r"); break;
-                    case '\t': literal.Append(@"\t"); break;
-                    case '\v': literal.Append(@"\v"); break;
-                    default:
-                        // ASCII printable character
-                        if (c >= 0x20 && c <= 0x7e)
-                        {
-                            literal.Append(c);
-                            // As UTF16 escaped character
-                        }
-                        else
-                        {
-                            literal.Append(@"\u");
-                            literal.Append(((int)c).ToString("x4"));
-                        }
-                        break;
-                }
-            }
-            literal.Append("\"");
-            return literal.ToString();
-        }
-
-        public static string UnescapeString(string literal)
-        {
-            StringBuilder result = new();
-
-            int i = 0;
-            while (i < literal.Length)
-            {
-                char c = literal[i];
-                if (c == '\\')
-                {
-                    // Handle escape sequences
-                    if (i + 1 >= literal.Length) throw new JsonConversionException($"Unexpected end of string {literal}", i);
-                    char nextChar = literal[i + 1];
-                    switch (nextChar)
-                    {
-                        case '\\': result.Append("\\"); break;
-                        case 'n': result.Append("\n"); break;
-                        case 't': result.Append("\t"); break;
-                        case 'r': result.Append("\r"); break;
-                        case 'b': result.Append("\b"); break;
-                        case 'f': result.Append("\f"); break;
-                        case 'a': result.Append("\a"); break;
-                        case 'v': result.Append("\v"); break;
-                        case '0': result.Append("\0"); break;
-                        case '\"': result.Append("\""); break;
-                        case 'u':
-                            // Parse Unicode escape sequence
-                            string unicodeValue = literal.Substring(i + 2, 4);
-                            result.Append((char)int.Parse(unicodeValue, NumberStyles.HexNumber));
-                            i += 4;
-                            break;
-                        default:
-                            // Unrecognized escape sequence, treat as a literal character
-                            result.Append(c);
-                            break;
-                    }
-                    i += 2;
-                }
-                else
-                {
-                    // Regular character
-                    result.Append(c);
-                    i++;
-                }
-            }
-
-            return result.ToString();
         }
     }
 }

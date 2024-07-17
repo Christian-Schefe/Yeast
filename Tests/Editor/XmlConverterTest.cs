@@ -1,26 +1,14 @@
+using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Yeast.Memento;
-using Yeast.Json;
+using Yeast.Xml;
 
 namespace Yeast.Test
 {
-    public class JsonConverterTest
+    public class XmlConverterTest
     {
-        [Test]
-        public void TestSpecialStringsStringify()
-        {
-            Assert.AreEqual("\"\\0\"", JSON.Stringify("\0"));
-            Assert.AreEqual("\"\\u0001\"", JSON.Stringify("\x01"));
-            Assert.AreEqual("\"\\n\"", JSON.Stringify("\n"));
-            Assert.AreEqual("\"\\r\"", JSON.Stringify("\r"));
-            Assert.AreEqual("\"\\t\"", JSON.Stringify("\t"));
-            Assert.AreEqual("\"\\b\"", JSON.Stringify("\b"));
-            Assert.AreEqual("\"\\\\\"", JSON.Stringify("\\"));
-            Assert.AreEqual("\"\\\"\"", JSON.Stringify("\""));
-        }
-
         [Test]
         public void TestNull()
         {
@@ -82,8 +70,6 @@ namespace Yeast.Test
             Test(new DecimalMemento(double.NaN));
             Test(new DecimalMemento(double.NegativeInfinity));
             Test(new DecimalMemento(double.PositiveInfinity));
-
-            TestParse("1E20", new DecimalMemento(1e20));
         }
 
         [Test]
@@ -120,31 +106,22 @@ namespace Yeast.Test
             Test(new DictMemento(new Dictionary<string, IMemento> {
                 { "f1", new IntegerMemento(1) },
                 { "f2", new IntegerMemento(2) },
-                { "this is a key", new DictMemento(new Dictionary<string, IMemento> { { "f1", new IntegerMemento(1) } }) }
+                { "this_is_a_key", new DictMemento(new Dictionary<string, IMemento> { { "f1", new IntegerMemento(1) } }) }
             }));
         }
 
         private void Test(IMemento val)
         {
-            var converter = new JsonConverter();
-            var result = converter.Serialize(val, new JsonSerializationSettings() { indentSize = 0, prettyPrint = false });
+            var converter = new XmlConverter();
+            var result = converter.Serialize(val, new XmlSerializationSettings() { });
 
-            //Debug.Log($"Json: {result}");
-            var val2 = converter.Deserialize(result, new JsonDeserializationSettings());
+            Debug.Log($"Xml: {result}");
+            var val2 = converter.Deserialize(result, new XmlDeserializationSettings());
 
             Assert.AreEqual(val, val2);
 
-            var result2 = converter.Serialize(val2, new JsonSerializationSettings() { indentSize = 0, prettyPrint = false });
+            var result2 = converter.Serialize(val2, new XmlSerializationSettings() { });
             Assert.AreEqual(result, result2);
-
-        }
-
-        private void TestParse(string val, IMemento expected)
-        {
-            var converter = new JsonConverter();
-            var ionValue = converter.Deserialize(val, new JsonDeserializationSettings());
-
-            Assert.AreEqual(expected, ionValue);
         }
     }
 }

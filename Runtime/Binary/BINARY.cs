@@ -1,5 +1,5 @@
 using System;
-using Yeast.Ion;
+using Yeast.Memento;
 using Yeast.Json;
 
 namespace Yeast.Binary
@@ -13,14 +13,14 @@ namespace Yeast.Binary
 
         private BINARY() : base() { }
 
-        private static (BinarySerializationSettings, ToIonSettings) CreateSerializationSettings()
+        private static (BinarySerializationSettings, ToMementoSettings) CreateSerializationSettings()
         {
-            return (new BinarySerializationSettings(), new ToIonSettings() { maxDepth = 100 });
+            return (new BinarySerializationSettings(), new ToMementoSettings() { maxDepth = 100 });
         }
 
-        private static (BinaryDeserializationSettings, FromIonSettings) CreateDeserializationSettings()
+        private static (BinaryDeserializationSettings, FromMementoSettings) CreateDeserializationSettings()
         {
-            return (new BinaryDeserializationSettings(), new FromIonSettings { ignoreExtraFields = false, useDefaultSetting = FromIonSettings.UseDefaultSetting.Never });
+            return (new BinaryDeserializationSettings(), new FromMementoSettings { ignoreExtraFields = false, useDefaultSetting = FromMementoSettings.UseDefaultSetting.Never });
         }
 
         /// <summary>
@@ -30,6 +30,23 @@ namespace Yeast.Binary
         {
             var settings = CreateSerializationSettings();
             return instance.Serialize(value, settings.Item2, settings.Item1);
+        }
+
+        /// <summary>
+        /// Tries to convert an object to a byte array.
+        /// </summary>
+        public static bool TrySerialize(object value, out byte[] result)
+        {
+            try
+            {
+                result = Serialize(value);
+                return true;
+            }
+            catch
+            {
+                result = default;
+                return false;
+            }
         }
 
         /// <summary>

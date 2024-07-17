@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Yeast.Binary;
-using Yeast.Ion;
+using Yeast.Memento;
 
 namespace Yeast.Test
 {
@@ -24,87 +24,87 @@ namespace Yeast.Test
         [Test]
         public void TestNull()
         {
-            Test(new NullValue());
+            Test(new NullMemento());
         }
 
         [Test]
         public void TestIntegers()
         {
-            Test(new IntegerValue(0));
-            Test(new IntegerValue(1));
-            Test(new IntegerValue(-1));
-            Test(new IntegerValue(624562456));
-            Test(new IntegerValue(-624562456));
-            Test(new IntegerValue(long.MaxValue));
-            Test(new IntegerValue(long.MinValue));
+            Test(new IntegerMemento(0));
+            Test(new IntegerMemento(1));
+            Test(new IntegerMemento(-1));
+            Test(new IntegerMemento(624562456));
+            Test(new IntegerMemento(-624562456));
+            Test(new IntegerMemento(long.MaxValue));
+            Test(new IntegerMemento(long.MinValue));
         }
 
         [Test]
         public void TestStrings()
         {
-            Test(new StringValue("Hello World!"));
-            Test(new StringValue(""));
-            Test(new StringValue(" "));
-            Test(new StringValue("1234567890"));
-            Test(new StringValue("Hello\nWorld!"));
-            Test(new StringValue("Hello\t\0\r\\\"World!"));
+            Test(new StringMemento("Hello World!"));
+            Test(new StringMemento(""));
+            Test(new StringMemento(" "));
+            Test(new StringMemento("1234567890"));
+            Test(new StringMemento("Hello\nWorld!"));
+            Test(new StringMemento("Hello\t\0\r\\\"World!"));
         }
 
         [Test]
         public void TestFloats()
         {
-            Test(new FloatValue(0));
-            Test(new FloatValue(1));
-            Test(new FloatValue(-1));
-            Test(new FloatValue(3.14159f));
-            Test(new FloatValue(-3.14159f));
-            Test(new FloatValue(3457457457.14159d));
-            Test(new FloatValue(-3457457457.14159d));
-            Test(new FloatValue(1E20));
-            Test(new FloatValue(-1E20));
-            Test(new FloatValue(float.MaxValue));
-            Test(new FloatValue(float.MinValue));
+            Test(new DecimalMemento(0));
+            Test(new DecimalMemento(1));
+            Test(new DecimalMemento(-1));
+            Test(new DecimalMemento(3.14159f));
+            Test(new DecimalMemento(-3.14159f));
+            Test(new DecimalMemento(3457457457.14159d));
+            Test(new DecimalMemento(-3457457457.14159d));
+            Test(new DecimalMemento(1E20));
+            Test(new DecimalMemento(-1E20));
+            Test(new DecimalMemento(float.MaxValue));
+            Test(new DecimalMemento(float.MinValue));
         }
 
         [Test]
         public void TestBooleans()
         {
-            Test(new BooleanValue(true));
-            Test(new BooleanValue(false));
+            Test(new BoolMemento(true));
+            Test(new BoolMemento(false));
         }
 
         [Test]
         public void TestArrays()
         {
-            Test(new ArrayValue(new List<IIonValue>()));
-            Test(new ArrayValue(new List<IIonValue> { new IntegerValue(1) }));
-            Test(new ArrayValue(new List<IIonValue> { new IntegerValue(1), new IntegerValue(2) }));
-            Test(new ArrayValue(new List<IIonValue> { new IntegerValue(1), new IntegerValue(2), new IntegerValue(3) }));
-            Test(new ArrayValue(new List<IIonValue> { new IntegerValue(1), new StringValue("hello"), new FloatValue(3.141d), new IntegerValue(4) }));
-            Test(new ArrayValue(new List<IIonValue> {
-                new ArrayValue(new List<IIonValue> { new IntegerValue(1), new IntegerValue(2) }),
-                new ArrayValue(new List<IIonValue> { new StringValue("hello"), new IntegerValue(2) }),
-                new ArrayValue(new List<IIonValue> { new IntegerValue(1), new NullValue(), new NullValue() })
+            Test(new ArrayMemento(new List<IMemento>()));
+            Test(new ArrayMemento(new List<IMemento> { new IntegerMemento(1) }));
+            Test(new ArrayMemento(new List<IMemento> { new IntegerMemento(1), new IntegerMemento(2) }));
+            Test(new ArrayMemento(new List<IMemento> { new IntegerMemento(1), new IntegerMemento(2), new IntegerMemento(3) }));
+            Test(new ArrayMemento(new List<IMemento> { new IntegerMemento(1), new StringMemento("hello"), new DecimalMemento(3.141d), new IntegerMemento(4) }));
+            Test(new ArrayMemento(new List<IMemento> {
+                new ArrayMemento(new List<IMemento> { new IntegerMemento(1), new IntegerMemento(2) }),
+                new ArrayMemento(new List<IMemento> { new StringMemento("hello"), new IntegerMemento(2) }),
+                new ArrayMemento(new List<IMemento> { new IntegerMemento(1), new NullMemento(), new NullMemento() })
             }));
 
-            var bigList = new List<IIonValue>();
-            for (int i = 0; i < 1000; i++) bigList.Add(new IntegerValue(i));
-            Test(new ArrayValue(bigList));
+            var bigList = new List<IMemento>();
+            for (int i = 0; i < 1000; i++) bigList.Add(new IntegerMemento(i));
+            Test(new ArrayMemento(bigList));
         }
 
         [Test]
         public void TestMaps()
         {
-            Test(new MapValue(new Dictionary<string, IIonValue>()));
-            Test(new MapValue(new Dictionary<string, IIonValue> { { "f1", new IntegerValue(1) } }));
-            Test(new MapValue(new Dictionary<string, IIonValue> {
-                { "f1", new IntegerValue(1) },
-                { "f2", new IntegerValue(2) },
-                { "this is a key", new MapValue(new Dictionary<string, IIonValue> { { "f1", new IntegerValue(1) } }) }
+            Test(new DictMemento(new Dictionary<string, IMemento>()));
+            Test(new DictMemento(new Dictionary<string, IMemento> { { "f1", new IntegerMemento(1) } }));
+            Test(new DictMemento(new Dictionary<string, IMemento> {
+                { "f1", new IntegerMemento(1) },
+                { "f2", new IntegerMemento(2) },
+                { "this is a key", new DictMemento(new Dictionary<string, IMemento> { { "f1", new IntegerMemento(1) } }) }
             }));
         }
 
-        private void Test(IIonValue val)
+        private void Test(IMemento val)
         {
             var converter = new BinaryConverter();
             var result = converter.Serialize(val, new BinarySerializationSettings());

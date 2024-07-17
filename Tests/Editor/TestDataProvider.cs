@@ -23,7 +23,7 @@ namespace Yeast.Test
 
         public static List<string> GetStringData()
         {
-            return new List<string> { "", " ", "Hello, World!", "This is a multiline\nstring!", "This\nString\tcontains\0\r\a\b\vmany special characters\u0010 like #'+~*-_.:,;µ<>|@€!\"§$%&/()=?`´^°ê" };
+            return new List<string> { "", " ", "Hello, World!", "This is a multiline\nstring!", "This\nString\tcontains\0\r\a\b\vmany special characters\u0010 like #'+~*-_.:,;µ<>|@€!\"§$%&/()=?`´^°ê&amp;&&gt;" };
         }
 
         public static List<bool> GetBoolData()
@@ -53,6 +53,22 @@ namespace Yeast.Test
             };
         }
 
+        public static List<int[,,][,]> GetJaggedMultidimensionalArrayData()
+        {
+            int[,] i1 = new int[,] { { 0, 3 }, { 1, 3 }, { -2, -3 } };
+            int[,] i2 = new int[,] { { 5, 7 }, { 4, 7 }, { 3, -7 } };
+
+            return new List<int[,,][,]>
+            {
+                new int[,,][,] { },
+                new int[,,][,] { { } },
+                new int[,,][,] { { { } } },
+                new int[,,][,] { { { } }, { { } }, { { } } },
+                new int[,,][,] { { { null, null } }, { { null, null } }, { { null, null } } },
+                new int[,,][,] { { { i1, i2, i1 }, { i1, i2, i1 } }, { { i2, i2, i1 }, { i2, i2, i2 } }, { { i1, i2, i1 }, { i1, i2, i1 } }, { { i2, i2, i1 }, { i2, i2, i2 } }},
+            };
+        }
+
         public static List<List<int>> GetListData()
         {
             return new List<List<int>>
@@ -62,6 +78,38 @@ namespace Yeast.Test
                 new List<int> { 0 },
                 new List<int> { 0, 1 },
                 new List<int> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 },
+            };
+        }
+
+        public static List<Dictionary<string, int>> GetDictionaryData()
+        {
+            return new List<Dictionary<string, int>>
+            {
+                new() { },
+                new() { { "a", 1 }, { "b", 2 }, { "c", 3 } },
+            };
+        }
+
+        public static List<HashSet<string>> GetHashSetData()
+        {
+            return new List<HashSet<string>>
+            {
+                new() { },
+                new() { "a", "b", "c" },
+            };
+        }
+
+        public static List<School> GetClassData()
+        {
+            List<Person> people = new() {
+                new Student("Alice", 20, 1.7f, 315), new Student("Bob", 21, 1.8f, 642), new Student("Charlie", 22, 1.9f, 426),
+                new Professor("John", 44, 1.66f, 47)
+            };
+
+            return new List<School>
+            {
+                new("School 1", new() { new Student("Alice", 20, 1.7f, 12135), new Student("Bob", 21, 1.8f ,42342), new Student("Charlie", 22, 1.9f, 73544) }, people),
+                new("School 2", new() { new Student("Alice", 20, 1.7f, 12135), new Student("Bob", 21, 1.8f ,42342), new Student("Charlie", 22, 1.9f, 73544) }, null),
             };
         }
 

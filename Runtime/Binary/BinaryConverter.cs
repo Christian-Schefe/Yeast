@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
-using Yeast.Ion;
+using Yeast.Memento;
+using static UnityEditor.Progress;
 
 namespace Yeast.Binary
 {
@@ -13,48 +14,48 @@ namespace Yeast.Binary
         public BinaryConversionException(string message) : base(message) { }
     }
 
-    public class BinaryConverter : BaseIonConverter<byte[], BinarySerializationSettings, BinaryDeserializationSettings>
+    public class BinaryConverter : BaseMementoConverter<byte[], BinarySerializationSettings, BinaryDeserializationSettings>
     {
-        protected override IIonValue Deserialize(byte[] value)
+        protected override IMemento Deserialize(byte[] value)
         {
             int offset = 0;
             return DeserializeInternal(value, ref offset);
         }
 
-        private IIonValue DeserializeInternal(byte[] value, ref int offset)
+        private IMemento DeserializeInternal(byte[] value, ref int offset)
         {
             byte type = value[offset];
             offset += 1;
 
-            if (type == (byte)IonType.String)
+            if (type == (byte)MementoType.String)
             {
                 string stringValue = DeserializeString(value, ref offset);
-                return new StringValue(stringValue);
+                return new StringMemento(stringValue);
             }
-            else if (type == (byte)IonType.Integer)
+            else if (type == (byte)MementoType.Integer)
             {
                 long integerValue = DeserializeLong(value, ref offset);
-                return new IntegerValue(integerValue);
+                return new IntegerMemento(integerValue);
             }
-            else if (type == (byte)IonType.Boolean)
+            else if (type == (byte)MementoType.Bool)
             {
                 bool booleanValue = DeserializeBoolean(value, ref offset);
-                return new BooleanValue(booleanValue);
+                return new BoolMemento(booleanValue);
             }
-            else if (type == (byte)IonType.Float)
+            else if (type == (byte)MementoType.Decimal)
             {
                 double floatValue = DeserializeDouble(value, ref offset);
-                return new FloatValue(floatValue);
+                return new DecimalMemento(floatValue);
             }
-            else if (type == (byte)IonType.Null)
+            else if (type == (byte)MementoType.Null)
             {
-                return new NullValue();
+                return new NullMemento();
             }
-            else if (type == (byte)IonType.Array)
+            else if (type == (byte)MementoType.Array)
             {
                 return DeserializeArray(value, ref offset);
             }
-            else if (type == (byte)IonType.Map)
+            else if (type == (byte)MementoType.Dict)
             {
                 return DeserializeObject(value, ref offset);
             }
@@ -64,56 +65,56 @@ namespace Yeast.Binary
             }
         }
 
-        private ArrayValue DeserializeArray(byte[] value, ref int offset)
+        private ArrayMemento DeserializeArray(byte[] value, ref int offset)
         {
             int length = DeserializeInt(value, ref offset);
-            List<IIonValue> values = new();
+            List<IMemento> values = new();
             for (int i = 0; i < length; i++)
             {
                 values.Add(DeserializeInternal(value, ref offset));
             }
-            return new ArrayValue(values);
+            return new ArrayMemento(values);
         }
 
-        private MapValue DeserializeObject(byte[] value, ref int offset)
+        private DictMemento DeserializeObject(byte[] value, ref int offset)
         {
             int length = DeserializeInt(value, ref offset);
-            Dictionary<string, IIonValue> values = new();
+            Dictionary<string, IMemento> values = new();
             for (int i = 0; i < length; i++)
             {
                 string key = DeserializeString(value, ref offset);
                 values.Add(key, DeserializeInternal(value, ref offset));
             }
-            return new MapValue(values);
+            return new DictMemento(values);
         }
 
-        protected override byte[] Serialize(IIonValue value)
+        protected override byte[] Serialize(IMemento value)
         {
-            List<byte> result = new() { (byte)value.IonType };
-            if (value is StringValue stringValue)
+            List<byte> result = new() { (byte)value.MementoType };
+            if (value is StringMemento stringValue)
             {
                 SerializeString(stringValue.value, result);
             }
-            else if (value is IntegerValue integerValue)
+            else if (value is IntegerMemento integerValue)
             {
                 result.AddRange(BitConverter.GetBytes(integerValue.value));
             }
-            else if (value is BooleanValue booleanValue)
+            else if (value is BoolMemento booleanValue)
             {
                 result.AddRange(BitConverter.GetBytes(booleanValue.value));
             }
-            else if (value is FloatValue floatValue)
+            else if (value is DecimalMemento floatValue)
             {
                 result.AddRange(BitConverter.GetBytes(floatValue.value));
             }
-            else if (value is NullValue)
+            else if (value is NullMemento)
             {
             }
-            else if (value is ArrayValue arrayValue)
+            else if (value is ArrayMemento arrayValue)
             {
                 result.AddRange(SerializeArray(arrayValue.value));
             }
-            else if (value is MapValue objectValue)
+            else if (value is DictMemento objectValue)
             {
                 result.AddRange(SerializeObject(objectValue.value));
             }
@@ -124,7 +125,7 @@ namespace Yeast.Binary
             return result.ToArray();
         }
 
-        private byte[] SerializeArray(IIonValue[] values)
+        private byte[] SerializeArray(IMemento[] values)
         {
             List<byte> bytes = new();
             bytes.AddRange(BitConverter.GetBytes(values.Length));
@@ -135,7 +136,7 @@ namespace Yeast.Binary
             return bytes.ToArray();
         }
 
-        private byte[] SerializeObject(Dictionary<string, IIonValue> values)
+        private byte[] SerializeObject(Dictionary<string, IMemento> values)
         {
             List<byte> bytes = new();
             bytes.AddRange(BitConverter.GetBytes(values.Count));

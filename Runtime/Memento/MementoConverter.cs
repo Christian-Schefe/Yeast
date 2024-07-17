@@ -3,14 +3,14 @@ using System.Collections;
 using System.Collections.Generic;
 using Yeast.Utils;
 
-namespace Yeast.Ion
+namespace Yeast.Memento
 {
-    public struct ToIonSettings
+    public struct ToMementoSettings
     {
         public int maxDepth;
     }
 
-    public struct FromIonSettings
+    public struct FromMementoSettings
     {
         public UseDefaultSetting useDefaultSetting;
         public bool ignoreExtraFields;
@@ -21,34 +21,34 @@ namespace Yeast.Ion
         }
     }
 
-    public class IonConversionException : Exception
+    public class MementoConversionException : Exception
     {
-        public IonConversionException(string message) : base(message) { }
+        public MementoConversionException(string message) : base(message) { }
     }
 
-    public class InternalException : IonConversionException
+    public class InternalException : MementoConversionException
     {
         public InternalException(string message) : base(message) { }
     }
 
-    public class TypeMismatchException : IonConversionException
+    public class TypeMismatchException : MementoConversionException
     {
         public TypeMismatchException(string message) : base(message) { }
     }
 
-    public class CircularReferenceException : IonConversionException
+    public class CircularReferenceException : MementoConversionException
     {
         public CircularReferenceException(string message) : base(message) { }
     }
 
-    public class IonConverter : BaseObjectConverter<IIonValue, ToIonSettings, FromIonSettings>
+    public class MementoConverter : BaseObjectConverter<IMemento, ToMementoSettings, FromMementoSettings>
     {
-        protected override IIonValue Serialize(object value)
+        protected override IMemento Serialize(object value)
         {
             return Serialize(value, 0);
         }
 
-        private IIonValue Serialize(object value, int depth)
+        private IMemento Serialize(object value, int depth)
         {
             if (depth > serializationSettings.maxDepth)
             {
@@ -57,7 +57,7 @@ namespace Yeast.Ion
 
             if (value == null)
             {
-                return new NullValue();
+                return new NullMemento();
             }
             Type type = value.GetType();
 
@@ -68,41 +68,41 @@ namespace Yeast.Ion
 
             if (value is bool boolValue)
             {
-                return new BooleanValue(boolValue);
+                return new BoolMemento(boolValue);
             }
             else if (value is string stringValue)
             {
-                return new StringValue(stringValue);
+                return new StringMemento(stringValue);
             }
             else if (TypeUtils.IsIntegerNumber(type) || type == typeof(char) || type.IsEnum)
             {
                 long val = Convert.ToInt64(value);
-                return new IntegerValue(val);
+                return new IntegerMemento(val);
             }
             else if (TypeUtils.IsRationalNumber(type))
             {
                 double val = Convert.ToDouble(value);
-                return new FloatValue(val);
+                return new DecimalMemento(val);
             }
             else if (TypeUtils.IsCollection(type, out _))
             {
                 IEnumerable collection = (IEnumerable)value;
-                var intermediateArray = new List<IIonValue>();
+                var intermediateArray = new List<IMemento>();
                 foreach (var element in collection)
                 {
                     var el = Serialize(element, depth + 1);
                     intermediateArray.Add(el);
                 }
-                return new ArrayValue(intermediateArray);
+                return new ArrayMemento(intermediateArray);
             }
             else if (type.IsArray) // must be multi-dimensional, as single-dimensional arrays implement ICollection<T>
             {
                 Array array = (Array)value;
-                return ArrayUtils.ArrayToIonValue(Serialize, array);
+                return ArrayUtils.ArrayToMemento(Serialize, array);
             }
             else
             {
-                var intermediateMap = new Dictionary<string, IIonValue>();
+                var intermediateMap = new Dictionary<string, IMemento>();
                 var fields = TypeUtils.GetFields(type);
                 foreach (var field in fields)
                 {
@@ -110,17 +110,36 @@ namespace Yeast.Ion
                     var el = Serialize(val, depth + 1);
                     intermediateMap.Add(field.Name, el);
                 }
-                return new MapValue(intermediateMap);
+
+                if (TypeUtils.HasSingleAttribute(type, out IsDerivedClassAttribute attr))
+                {
+                    if (!TypeUtils.HasAttribute<HasDerivedClassAttribute>(attr.BaseType, out var attrs))
+                    {
+                        throw new TypeMismatchException("Cannot serialize derived class without HasDerivedClassAttribute.");
+                    }
+                    var derivedClassAttr = attrs.Find(a => a.DerivedType == type)
+                        ?? throw new TypeMismatchException("Cannot serialize derived class without HasDerivedClassAttribute.");
+                    intermediateMap.Add("$type", new StringMemento(derivedClassAttr.Identifier));
+                }
+
+                return new DictMemento(intermediateMap);
             }
         }
 
-        protected override object Deserialize(Type type, IIonValue value)
+        protected override object Deserialize(Type type, IMemento value)
         {
             if (type == null)
             {
                 throw new ArgumentNullException("type");
             }
-            else if (!TypeUtils.IsInstantiateable(type) || type.IsSubclassOf(typeof(UnityEngine.Object)))
+            else if (type.IsSubclassOf(typeof(UnityEngine.Object)))
+            {
+                throw new TypeMismatchException("Cannot deserialize to new instances of type '" + type.Name + ".'");
+            }
+
+            bool isInstantiable = TypeUtils.IsInstantiateable(type);
+            bool hasDerivedClassAttribute = TypeUtils.HasAttribute<HasDerivedClassAttribute>(type, out var attrs);
+            if (!isInstantiable && !hasDerivedClassAttribute)
             {
                 throw new TypeMismatchException("Cannot deserialize to new instances of type '" + type.Name + ".'");
             }
@@ -129,7 +148,7 @@ namespace Yeast.Ion
             if (nullableType != null) type = nullableType;
             bool isNullable = nullableType != null;
 
-            if (value is NullValue)
+            if (value is NullMemento)
             {
                 if (type == typeof(object) || type.IsClass || isNullable)
                 {
@@ -137,7 +156,7 @@ namespace Yeast.Ion
                 }
                 throw new TypeMismatchException("Failed to convert null to " + type.Name + ": type not nullable");
             }
-            else if (value is StringValue stringValue)
+            else if (value is StringMemento stringValue)
             {
                 if (type == typeof(string) || type == typeof(object))
                 {
@@ -145,7 +164,7 @@ namespace Yeast.Ion
                 }
                 throw new TypeMismatchException("Failed to convert string to " + type.Name);
             }
-            else if (value is IntegerValue integerValue)
+            else if (value is IntegerMemento integerValue)
             {
                 if (type == typeof(object))
                 {
@@ -161,7 +180,7 @@ namespace Yeast.Ion
                 }
                 throw new TypeMismatchException("Failed to convert long to " + type.Name);
             }
-            else if (value is FloatValue floatValue)
+            else if (value is DecimalMemento floatValue)
             {
                 if (TypeUtils.IsRationalNumber(type))
                 {
@@ -173,7 +192,7 @@ namespace Yeast.Ion
                 }
                 throw new TypeMismatchException("Failed to convert double to " + type.Name);
             }
-            else if (value is BooleanValue boolValue)
+            else if (value is BoolMemento boolValue)
             {
                 if (type == typeof(bool) || type == typeof(object))
                 {
@@ -181,7 +200,7 @@ namespace Yeast.Ion
                 }
                 throw new TypeMismatchException("Failed to convert bool to " + type.Name);
             }
-            else if (value is ArrayValue arrayValue)
+            else if (value is ArrayMemento arrayValue)
             {
                 if (type == typeof(object))
                 {
@@ -195,9 +214,9 @@ namespace Yeast.Ion
                 else if (type.IsArray)
                 {
                     var elementType = type.GetElementType();
-                    object Transform(IIonValue val) => Deserialize(elementType, val);
+                    object Transform(IMemento val) => Deserialize(elementType, val);
 
-                    var arr = ArrayUtils.IonValueToArray(elementType, type, Transform, arrayValue);
+                    var arr = ArrayUtils.MementoToArray(elementType, type, Transform, arrayValue);
                     return arr;
                 }
                 else if (TypeUtils.IsCollection(type, out var elementType))
@@ -216,7 +235,7 @@ namespace Yeast.Ion
                 }
                 throw new TypeMismatchException("Failed to convert array to " + type.Name);
             }
-            else if (value is MapValue mapValue)
+            else if (value is DictMemento mapValue)
             {
                 if (type == typeof(object))
                 {
@@ -230,6 +249,24 @@ namespace Yeast.Ion
                 }
                 else if (type.IsClass || TypeUtils.IsStruct(type))
                 {
+                    string typeID = mapValue.value.ContainsKey("$type") ? ((StringMemento)mapValue.value["$type"]).value : null;
+                    if (!isInstantiable && typeID == null)
+                    {
+                        throw new TypeMismatchException("Failed to convert map to " + type.Name + ": type is not instantiateable and there is no type ID");
+                    }
+
+                    if (typeID != null)
+                    {
+                        var attr = attrs.Find(a => a.Identifier == typeID)
+                            ?? throw new TypeMismatchException("Failed to convert map to " + type.Name + ": type ID does not match any derived class");
+                        if (!type.IsAssignableFrom(attr.DerivedType))
+                        {
+                            throw new TypeMismatchException("Failed to convert map to " + type.Name + $": {attr.DerivedType.Name} is not a derived type");
+                        }
+                        mapValue.value.Remove("$type");
+                        return Deserialize(attr.DerivedType, mapValue);
+                    }
+
                     if (!TypeUtils.TryCreateInstance(type, out object instance))
                     {
                         throw new TypeMismatchException("Failed to create instance of " + type.Name);
@@ -238,10 +275,10 @@ namespace Yeast.Ion
                     foreach (var field in TypeUtils.GetFields(type))
                     {
                         string fieldName = field.Name;
-                        if (!mapValue.value.TryGetValue(fieldName, out IIonValue fieldValue))
+                        if (!mapValue.value.TryGetValue(fieldName, out IMemento fieldValue))
                         {
-                            if (deserializationSettings.useDefaultSetting == FromIonSettings.UseDefaultSetting.ForMissingFields
-                                || deserializationSettings.useDefaultSetting == FromIonSettings.UseDefaultSetting.ForMissingOrMismatchedFields)
+                            if (deserializationSettings.useDefaultSetting == FromMementoSettings.UseDefaultSetting.ForMissingFields
+                                || deserializationSettings.useDefaultSetting == FromMementoSettings.UseDefaultSetting.ForMissingOrMismatchedFields)
                             {
                                 field.SetValue(instance, TypeUtils.DefaultValue(type));
                                 unusedKeys.Remove(fieldName);
@@ -259,7 +296,7 @@ namespace Yeast.Ion
                         }
                         catch (TypeMismatchException e)
                         {
-                            if (deserializationSettings.useDefaultSetting == FromIonSettings.UseDefaultSetting.ForMissingOrMismatchedFields)
+                            if (deserializationSettings.useDefaultSetting == FromMementoSettings.UseDefaultSetting.ForMissingOrMismatchedFields)
                             {
                                 field.SetValue(instance, TypeUtils.DefaultValue(type));
                                 unusedKeys.Remove(fieldName);
@@ -278,7 +315,7 @@ namespace Yeast.Ion
             }
             else
             {
-                throw new InternalException("Unknown IonValue Type" + type.Name);
+                throw new InternalException("Unknown Memento Type" + type.Name);
             }
         }
     }

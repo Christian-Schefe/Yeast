@@ -56,7 +56,7 @@ namespace Yeast.Test
             Debug.Log(json);
 
             json = JSON.Stringify(new Student("John", 19, 1.8f, 149385), JsonStringifyMode.Pretty);
-            Assert.AreEqual("{\n  \"studentID\": 149385,\n  \"name\": \"John\",\n  \"age\": 19,\n  \"height\": 1.7999999523162842\n}", json);
+            Assert.AreEqual("{\n  \"studentID\": 149385,\n  \"name\": \"John\",\n  \"age\": 19,\n  \"height\": 1.7999999523162842,\n  \"$type\": \"Student\"\n}", json);
         }
         [Test]
         public void TestInheritance()

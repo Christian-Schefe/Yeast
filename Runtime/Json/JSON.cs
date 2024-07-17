@@ -1,5 +1,5 @@
 using System;
-using Yeast.Ion;
+using Yeast.Memento;
 
 namespace Yeast.Json
 {
@@ -12,22 +12,22 @@ namespace Yeast.Json
 
         private JSON() : base() { }
 
-        private static (JsonSerializationSettings, ToIonSettings) CreateSettings(JsonStringifyMode mode)
+        private static (JsonSerializationSettings, ToMementoSettings) CreateSettings(JsonStringifyMode mode)
         {
             return mode switch
             {
-                JsonStringifyMode.Compact => (new JsonSerializationSettings() { prettyPrint = false, indentSize = 0 }, new ToIonSettings() { maxDepth = 100 }),
-                JsonStringifyMode.Pretty => (new JsonSerializationSettings() { prettyPrint = true, indentSize = 2 }, new ToIonSettings() { maxDepth = 100 }),
+                JsonStringifyMode.Compact => (new JsonSerializationSettings() { prettyPrint = false, indentSize = 0 }, new ToMementoSettings() { maxDepth = 100 }),
+                JsonStringifyMode.Pretty => (new JsonSerializationSettings() { prettyPrint = true, indentSize = 2 }, new ToMementoSettings() { maxDepth = 100 }),
                 _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
             };
         }
 
-        private static (JsonDeserializationSettings, FromIonSettings) CreateSettings(JsonParseMode mode)
+        private static (JsonDeserializationSettings, FromMementoSettings) CreateSettings(JsonParseMode mode)
         {
             return mode switch
             {
-                JsonParseMode.Exact => (new JsonDeserializationSettings(), new FromIonSettings() { ignoreExtraFields = false, useDefaultSetting = FromIonSettings.UseDefaultSetting.Never }),
-                JsonParseMode.Loose => (new JsonDeserializationSettings(), new FromIonSettings() { ignoreExtraFields = true, useDefaultSetting = FromIonSettings.UseDefaultSetting.ForMissingOrMismatchedFields }),
+                JsonParseMode.Exact => (new JsonDeserializationSettings(), new FromMementoSettings() { ignoreExtraFields = false, useDefaultSetting = FromMementoSettings.UseDefaultSetting.Never }),
+                JsonParseMode.Loose => (new JsonDeserializationSettings(), new FromMementoSettings() { ignoreExtraFields = true, useDefaultSetting = FromMementoSettings.UseDefaultSetting.ForMissingOrMismatchedFields }),
                 _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
             };
         }
@@ -39,6 +39,23 @@ namespace Yeast.Json
         {
             var settings = CreateSettings(mode);
             return instance.Serialize(value, settings.Item2, settings.Item1);
+        }
+
+        /// <summary>
+        /// Tries to convert an object to a JSON string.
+        /// </summary>
+        public static bool TryStringify(object value, out string result, JsonStringifyMode mode = JsonStringifyMode.Compact)
+        {
+            try
+            {
+                result = Stringify(value, mode);
+                return true;
+            }
+            catch
+            {
+                result = default;
+                return false;
+            }
         }
 
         /// <summary>

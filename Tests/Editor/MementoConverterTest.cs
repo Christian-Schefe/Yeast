@@ -2,11 +2,11 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using NUnit.Framework;
-using Yeast.Ion;
+using Yeast.Memento;
 
 namespace Yeast.Test
 {
-    public class IonConverterTest
+    public class MementoConverterTest
     {
         [Test]
         public void TestNull()
@@ -105,14 +105,14 @@ namespace Yeast.Test
         private void Test(object val)
         {
             var type = val?.GetType() ?? typeof(object);
-            var converter = new IonConverter();
-            var result = converter.Serialize(val, new ToIonSettings() { maxDepth = 100 });
+            var converter = new MementoConverter();
+            var result = converter.Serialize(val, new ToMementoSettings() { maxDepth = 100 });
 
             UnityEngine.Debug.Log($"Ion: {result}");
-            var val2 = converter.Deserialize(type, result, new FromIonSettings());
+            var val2 = converter.Deserialize(type, result, new FromMementoSettings());
             Assert.AreEqual(val, val2);
 
-            var result2 = converter.Serialize(val2, new ToIonSettings() { maxDepth = 100 });
+            var result2 = converter.Serialize(val2, new ToMementoSettings() { maxDepth = 100 });
             Assert.AreEqual(result, result2);
         }
     }
