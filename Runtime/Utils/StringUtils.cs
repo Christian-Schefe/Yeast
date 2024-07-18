@@ -1,17 +1,11 @@
-using System.Collections;
-using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
-using UnityEngine;
-using UnityEngine.Windows;
-using Yeast.Json;
 
 namespace Yeast.Utils
 {
     public static class StringUtils
     {
-
-        public static string EscapeString(string input)
+        public static string EscapeJsonString(string input)
         {
             StringBuilder literal = new(input.Length);
             foreach (var c in input)
@@ -20,20 +14,17 @@ namespace Yeast.Utils
                 {
                     case '\"': literal.Append("\\\""); break;
                     case '\\': literal.Append(@"\\"); break;
-                    case '\0': literal.Append(@"\0"); break;
-                    case '\a': literal.Append(@"\a"); break;
+                    case '/': literal.Append(@"\/"); break;
                     case '\b': literal.Append(@"\b"); break;
                     case '\f': literal.Append(@"\f"); break;
                     case '\n': literal.Append(@"\n"); break;
                     case '\r': literal.Append(@"\r"); break;
                     case '\t': literal.Append(@"\t"); break;
-                    case '\v': literal.Append(@"\v"); break;
                     default:
                         // ASCII printable character
                         if (c >= 0x20 && c <= 0x7e)
                         {
                             literal.Append(c);
-                            // As UTF16 escaped character
                         }
                         else
                         {
@@ -46,7 +37,7 @@ namespace Yeast.Utils
             return literal.ToString();
         }
 
-        public static string UnescapeString(string literal)
+        public static string UnescapeJsonString(string literal)
         {
             StringBuilder result = new();
 
@@ -56,21 +47,18 @@ namespace Yeast.Utils
                 char c = literal[i];
                 if (c == '\\')
                 {
-                    // Handle escape sequences
-                    if (i + 1 >= literal.Length) throw new JsonConversionException($"Unexpected end of string {literal}", i);
+                    if (i + 1 >= literal.Length) throw new System.IndexOutOfRangeException($"Unexpected end of string {literal}");
                     char nextChar = literal[i + 1];
                     switch (nextChar)
                     {
+                        case '\"': result.Append("\""); break;
                         case '\\': result.Append("\\"); break;
-                        case 'n': result.Append("\n"); break;
-                        case 't': result.Append("\t"); break;
-                        case 'r': result.Append("\r"); break;
+                        case '/': result.Append("/"); break;
                         case 'b': result.Append("\b"); break;
                         case 'f': result.Append("\f"); break;
-                        case 'a': result.Append("\a"); break;
-                        case 'v': result.Append("\v"); break;
-                        case '0': result.Append("\0"); break;
-                        case '\"': result.Append("\""); break;
+                        case 'n': result.Append("\n"); break;
+                        case 'r': result.Append("\r"); break;
+                        case 't': result.Append("\t"); break;
                         case 'u':
                             // Parse Unicode escape sequence
                             string unicodeValue = literal.Substring(i + 2, 4);
@@ -78,15 +66,12 @@ namespace Yeast.Utils
                             i += 4;
                             break;
                         default:
-                            // Unrecognized escape sequence, treat as a literal character
-                            result.Append(c);
-                            break;
+                            throw new System.InvalidOperationException($"Unknown escape sequence '\\{nextChar}'");
                     }
                     i += 2;
                 }
                 else
                 {
-                    // Regular character
                     result.Append(c);
                     i++;
                 }
@@ -95,7 +80,7 @@ namespace Yeast.Utils
             return result.ToString();
         }
 
-        public static string HTMLEscape(string input)
+        public static string EscapeXMLString(string input)
         {
             StringBuilder literal = new(input.Length);
             foreach (var c in input)
@@ -105,6 +90,8 @@ namespace Yeast.Utils
                     case '<': literal.Append("&lt;"); break;
                     case '>': literal.Append("&gt;"); break;
                     case '&': literal.Append("&amp;"); break;
+                    case '\"': literal.Append("&quot;"); break;
+                    case '\'': literal.Append("&apos;"); break;
                     default:
                         literal.Append(c);
                         break;
@@ -113,7 +100,7 @@ namespace Yeast.Utils
             return literal.ToString();
         }
 
-        public static string HTMLUnescape(string literal)
+        public static string UnescapeXMLString(string literal)
         {
             StringBuilder result = new();
 
@@ -139,9 +126,19 @@ namespace Yeast.Utils
                         result.Append("&");
                         i += 5;
                     }
+                    else if (strToEnd.StartsWith("&quot;"))
+                    {
+                        result.Append("\"");
+                        i += 6;
+                    }
+                    else if (strToEnd.StartsWith("&apos;"))
+                    {
+                        result.Append("'");
+                        i += 6;
+                    }
                     else
                     {
-                        throw new JsonConversionException($"Unknown HTML escape sequence {literal}", i);
+                        throw new System.InvalidOperationException($"Unknown HTML escape sequence {literal}");
                     }
                 }
                 else
@@ -167,7 +164,15 @@ namespace Yeast.Utils
 
         public static string DoubleToString(double val)
         {
-            var str = val.ToString("R", CultureInfo.InvariantCulture);
+            if (double.IsNaN(val)) return "NaN";
+            if (double.IsPositiveInfinity(val)) return "Infinity";
+            if (double.IsNegativeInfinity(val)) return "-Infinity";
+            return val.ToString("R", CultureInfo.InvariantCulture);
+        }
+
+        public static string DoubleToStringWithZero(double val)
+        {
+            var str = DoubleToString(val);
             for (int i = 0; i < str.Length; i++)
             {
                 char c = str[i];
@@ -178,6 +183,9 @@ namespace Yeast.Utils
 
         public static double StringToDouble(string val)
         {
+            if (val == "NaN") return double.NaN;
+            if (val == "Infinity") return double.PositiveInfinity;
+            if (val == "-Infinity") return double.NegativeInfinity;
             return double.Parse(val, CultureInfo.InvariantCulture);
         }
     }

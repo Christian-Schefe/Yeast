@@ -6,49 +6,37 @@ namespace Yeast.Json
     /// <summary>
     /// Converts objects to and from JSON format.
     /// </summary>
-    public sealed class JSON : BaseConverter<string, JsonConverter, JsonSerializationSettings, JsonDeserializationSettings>
+    public sealed class JSON
     {
         private static readonly JSON instance = new();
 
-        private JSON() : base() { }
+        private readonly MementoConverter mementoConverter;
+        private readonly JsonConverter jsonConverter;
 
-        private static (JsonSerializationSettings, ToMementoSettings) CreateSettings(JsonStringifyMode mode)
+        private JSON()
         {
-            return mode switch
-            {
-                JsonStringifyMode.Compact => (new JsonSerializationSettings() { prettyPrint = false, indentSize = 0 }, new ToMementoSettings() { maxDepth = 100 }),
-                JsonStringifyMode.Pretty => (new JsonSerializationSettings() { prettyPrint = true, indentSize = 2 }, new ToMementoSettings() { maxDepth = 100 }),
-                _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
-            };
-        }
-
-        private static (JsonDeserializationSettings, FromMementoSettings) CreateSettings(JsonParseMode mode)
-        {
-            return mode switch
-            {
-                JsonParseMode.Exact => (new JsonDeserializationSettings(), new FromMementoSettings() { ignoreExtraFields = false, useDefaultSetting = FromMementoSettings.UseDefaultSetting.Never }),
-                JsonParseMode.Loose => (new JsonDeserializationSettings(), new FromMementoSettings() { ignoreExtraFields = true, useDefaultSetting = FromMementoSettings.UseDefaultSetting.ForMissingOrMismatchedFields }),
-                _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
-            };
+            mementoConverter = new();
+            jsonConverter = new();
         }
 
         /// <summary>
         /// Converts an object to a JSON string.
         /// </summary>
-        public static string Stringify(object value, JsonStringifyMode mode = JsonStringifyMode.Compact)
+        public static string Stringify(object value)
         {
-            var settings = CreateSettings(mode);
-            return instance.Serialize(value, settings.Item2, settings.Item1);
+            var memento = instance.mementoConverter.Serialize(value);
+            var jsonValue = instance.jsonConverter.Serialize(memento);
+            return jsonValue.ToString();
         }
 
         /// <summary>
         /// Tries to convert an object to a JSON string.
         /// </summary>
-        public static bool TryStringify(object value, out string result, JsonStringifyMode mode = JsonStringifyMode.Compact)
+        public static bool TryStringify(object value, out string result)
         {
             try
             {
-                result = Stringify(value, mode);
+                result = Stringify(value);
                 return true;
             }
             catch
@@ -61,19 +49,19 @@ namespace Yeast.Json
         /// <summary>
         /// Converts a JSON string to an object.
         /// </summary>
-        public static T Parse<T>(string text, JsonParseMode mode = JsonParseMode.Exact)
+        public static T Parse<T>(string text)
         {
-            return (T)Parse(typeof(T), text, mode);
+            return (T)Parse(typeof(T), text);
         }
 
         /// <summary>
         /// Tries to convert a JSON string to an object.
         /// </summary>
-        public static bool TryParse<T>(string text, out T result, JsonParseMode mode = JsonParseMode.Exact)
+        public static bool TryParse<T>(string text, out T result)
         {
             try
             {
-                result = Parse<T>(text, mode);
+                result = Parse<T>(text);
                 return true;
             }
             catch
@@ -86,20 +74,21 @@ namespace Yeast.Json
         /// <summary>
         /// Converts a JSON string to an object.
         /// </summary>
-        public static object Parse(Type type, string text, JsonParseMode mode = JsonParseMode.Exact)
+        public static object Parse(Type type, string text)
         {
-            var settings = CreateSettings(mode);
-            return instance.Deserialize(type, text, settings.Item2, settings.Item1);
+            var jsonValue = JsonValue.FromString(text);
+            var memento = instance.jsonConverter.Deserialize(jsonValue);
+            return instance.mementoConverter.Deserialize(type, memento);
         }
 
         /// <summary>
         /// Tries to convert a JSON string to an object.
         /// </summary>
-        public static bool TryParse(Type type, string text, out object result, JsonParseMode mode = JsonParseMode.Exact)
+        public static bool TryParse(Type type, string text, out object result)
         {
             try
             {
-                result = Parse(type, text, mode);
+                result = Parse(type, text);
                 return true;
             }
             catch
@@ -108,23 +97,5 @@ namespace Yeast.Json
                 return false;
             }
         }
-    }
-
-    /// <summary>
-    /// Modes for converting objects to JSON strings.
-    /// </summary>
-    public enum JsonStringifyMode
-    {
-        Compact,
-        Pretty
-    }
-
-    /// <summary>
-    /// Modes for converting JSON strings to objects.
-    /// </summary>
-    public enum JsonParseMode
-    {
-        Exact,
-        Loose
     }
 }

@@ -107,13 +107,13 @@ namespace Yeast.Test
         private void Test(IMemento val)
         {
             var converter = new BinaryConverter();
-            var result = converter.Serialize(val, new BinarySerializationSettings());
+            var result = converter.Serialize(val);
 
             //Debug.Log($"Binary: {string.Join(", ", result)}");
-            var val2 = converter.Deserialize(result, new BinaryDeserializationSettings());
-            Assert.AreEqual(val, val2);
+            var val2 = converter.Deserialize(result);
+            Assert.IsTrue(val.ValueEquals(val2));
 
-            var result2 = converter.Serialize(val2, new BinarySerializationSettings());
+            var result2 = converter.Serialize(val2);
             Assert.AreEqual(result, result2);
         }
     }

@@ -7,24 +7,24 @@ namespace Yeast
 {
     public static class Yeast
     {
-        public static string ToJson(object obj, JsonStringifyMode mode = JsonStringifyMode.Compact)
+        public static string ToJson(object obj)
         {
-            return JSON.Stringify(obj, mode);
+            return JSON.Stringify(obj);
         }
 
-        public static bool TryToJson(object obj, out string json, JsonStringifyMode mode = JsonStringifyMode.Compact)
+        public static bool TryToJson(object obj, out string json)
         {
-            return JSON.TryStringify(obj, out json, mode);
+            return JSON.TryStringify(obj, out json);
         }
 
-        public static T FromJson<T>(string json, JsonParseMode mode = JsonParseMode.Exact)
+        public static T FromJson<T>(string json)
         {
-            return JSON.Parse<T>(json, mode);
+            return JSON.Parse<T>(json);
         }
 
-        public static bool TryFromJson<T>(string json, out T obj, JsonParseMode mode = JsonParseMode.Exact)
+        public static bool TryFromJson<T>(string json, out T obj)
         {
-            return JSON.TryParse(json, out obj, mode);
+            return JSON.TryParse(json, out obj);
         }
 
         public static byte[] ToBytes(object obj)

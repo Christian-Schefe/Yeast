@@ -1,28 +1,23 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
 
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Interface, AllowMultiple = true)]
-public class HasDerivedClassAttribute : Attribute
+public class HasDerivedClassesAttribute : Attribute
 {
-    public Type DerivedType { get; private set; }
-    public string Identifier { get; private set; }
+    public Type[] DerivedTypes { get; private set; }
 
-    public HasDerivedClassAttribute(Type baseType, string identifier)
+    public HasDerivedClassesAttribute(params Type[] baseType)
     {
-        DerivedType = baseType;
-        Identifier = identifier;
+        DerivedTypes = baseType;
     }
 }
 
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
 public class IsDerivedClassAttribute : Attribute
 {
-    public Type BaseType { get; private set; }
+    public string Identifier { get; private set; }
 
-    public IsDerivedClassAttribute(Type baseType)
+    public IsDerivedClassAttribute(string identifier)
     {
-        BaseType = baseType;
+        Identifier = identifier;
     }
 }

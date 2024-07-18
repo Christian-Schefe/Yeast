@@ -113,14 +113,15 @@ namespace Yeast.Test
         private void Test(IMemento val)
         {
             var converter = new XmlConverter();
-            var result = converter.Serialize(val, new XmlSerializationSettings() { });
+            var result = converter.Serialize(val);
 
             Debug.Log($"Xml: {result}");
-            var val2 = converter.Deserialize(result, new XmlDeserializationSettings());
+            var val2 = converter.Deserialize(result);
+            Debug.Log($"Xml: {val2}");
 
-            Assert.AreEqual(val, val2);
+            Assert.IsTrue(val.ValueEquals(val2));
 
-            var result2 = converter.Serialize(val2, new XmlSerializationSettings() { });
+            var result2 = converter.Serialize(val2);
             Assert.AreEqual(result, result2);
         }
     }

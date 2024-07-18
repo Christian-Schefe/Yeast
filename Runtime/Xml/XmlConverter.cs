@@ -7,12 +7,9 @@ using Yeast.Utils;
 
 namespace Yeast.Xml
 {
-    public struct XmlSerializationSettings { }
-    public struct XmlDeserializationSettings { }
-
-    public class XmlConverter : BaseMementoConverter<string, XmlSerializationSettings, XmlDeserializationSettings>
+    public class XmlConverter : IMementoConverter<string>
     {
-        protected override IMemento Deserialize(string text)
+        public IMemento Deserialize(string text)
         {
             int position = 0;
             ReadTag(text, ref position, out var tagName, out var attributes);
@@ -33,7 +30,7 @@ namespace Yeast.Xml
                 "Bool" => ReadBool(text, ref position),
                 "Array" => ReadArray(text, int.Parse(attributes["length"]), ref position),
                 "Dict" => ReadDict(text, int.Parse(attributes["length"]), ref position),
-                _ => throw new JsonConversionException($"Unknown memento type: {type}", position)
+                _ => throw new System.Exception($"Unknown memento type: {type}")
             };
         }
 
@@ -73,7 +70,7 @@ namespace Yeast.Xml
                 str.Append(text[position]);
                 AdvancePosition(text, ref position);
             }
-            return new StringMemento(StringUtils.HTMLUnescape(StringUtils.UnescapeString(str.ToString())));
+            return new StringMemento(StringUtils.UnescapeJsonString(StringUtils.UnescapeXMLString(str.ToString())));
         }
 
         private IMemento ReadBool(string text, ref int position)
@@ -132,7 +129,7 @@ namespace Yeast.Xml
             }
         }
 
-        protected override string Serialize(IMemento value)
+        public string Serialize(IMemento value)
         {
             StringBuilder result = new();
             AddTag(result, value, "data");
@@ -176,11 +173,11 @@ namespace Yeast.Xml
             }
             else if (value is StringMemento strMemento)
             {
-                result.Append(StringUtils.HTMLEscape(StringUtils.EscapeString(strMemento.value)));
+                result.Append(StringUtils.EscapeJsonString(StringUtils.EscapeXMLString(strMemento.value)));
             }
             else if (value is DecimalMemento decimalMemento)
             {
-                result.Append(StringUtils.DoubleToString(decimalMemento.value));
+                result.Append(StringUtils.DoubleToStringWithZero(decimalMemento.value));
             }
             else if (value is BoolMemento boolMemento)
             {
@@ -219,7 +216,7 @@ namespace Yeast.Xml
             CheckPosition(text, ref position);
             if (text[position] != expected)
             {
-                throw new JsonConversionException($"Expected '{expected}', found {text[position]}", position);
+                throw new System.Exception($"Expected '{expected}', found {text[position]}");
             }
             position++;
         }
@@ -242,7 +239,7 @@ namespace Yeast.Xml
         {
             if (text.Length <= position)
             {
-                throw new JsonConversionException($"Unexpected end of file", position);
+                throw new System.Exception($"Unexpected end of file");
             }
         }
 

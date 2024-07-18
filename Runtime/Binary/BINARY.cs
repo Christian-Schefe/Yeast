@@ -7,20 +7,17 @@ namespace Yeast.Binary
     /// <summary>
     /// Converts objects to and from binary format.
     /// </summary>
-    public sealed class BINARY : BaseConverter<byte[], BinaryConverter, BinarySerializationSettings, BinaryDeserializationSettings>
+    public sealed class BINARY
     {
         private static readonly BINARY instance = new();
 
-        private BINARY() : base() { }
+        private readonly MementoConverter mementoConverter;
+        private readonly BinaryConverter binaryConverter;
 
-        private static (BinarySerializationSettings, ToMementoSettings) CreateSerializationSettings()
+        private BINARY()
         {
-            return (new BinarySerializationSettings(), new ToMementoSettings() { maxDepth = 100 });
-        }
-
-        private static (BinaryDeserializationSettings, FromMementoSettings) CreateDeserializationSettings()
-        {
-            return (new BinaryDeserializationSettings(), new FromMementoSettings { ignoreExtraFields = false, useDefaultSetting = FromMementoSettings.UseDefaultSetting.Never });
+            mementoConverter = new();
+            binaryConverter = new();
         }
 
         /// <summary>
@@ -28,8 +25,8 @@ namespace Yeast.Binary
         /// </summary>
         public static byte[] Serialize(object value)
         {
-            var settings = CreateSerializationSettings();
-            return instance.Serialize(value, settings.Item2, settings.Item1);
+            var memento = instance.mementoConverter.Serialize(value);
+            return instance.binaryConverter.Serialize(memento);
         }
 
         /// <summary>
@@ -79,8 +76,8 @@ namespace Yeast.Binary
         /// </summary>
         public static object Deserialize(Type type, byte[] bytes)
         {
-            var settings = CreateDeserializationSettings();
-            return instance.Deserialize(type, bytes, settings.Item2, settings.Item1);
+            var memento = instance.binaryConverter.Deserialize(bytes);
+            return instance.mementoConverter.Deserialize(type, memento);
         }
 
         /// <summary>

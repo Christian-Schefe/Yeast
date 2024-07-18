@@ -4,8 +4,7 @@ using System.Linq;
 
 namespace Yeast.Test
 {
-    [HasDerivedClass(typeof(Student), "Student")]
-    [HasDerivedClass(typeof(Professor), "Professor")]
+    [HasDerivedClasses(typeof(Student), typeof(Professor))]
     public abstract class Person
     {
         public string name;
@@ -46,7 +45,7 @@ namespace Yeast.Test
         }
     }
 
-    [IsDerivedClass(typeof(Person))]
+    [IsDerivedClass("Student")]
     public class Student : Person
     {
         public int studentID;
@@ -83,7 +82,7 @@ namespace Yeast.Test
         }
     }
 
-    [IsDerivedClass(typeof(Person))]
+    [IsDerivedClass("Professor")]
     public class Professor : Person
     {
         public int professorID;

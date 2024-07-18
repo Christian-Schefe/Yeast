@@ -1,11 +1,14 @@
 using System.Collections.Generic;
 using System.Linq;
+using Yeast.Json;
 
 namespace Yeast.Memento
 {
     public interface IMemento
     {
         public MementoType MementoType { get; }
+        public void Accept(IMementoVisitor visitor);
+        public bool ValueEquals(IMemento other);
     }
 
     public enum MementoType : byte
@@ -25,19 +28,19 @@ namespace Yeast.Memento
 
         public NullMemento() { }
 
-        public override bool Equals(object obj)
-        {
-            return obj is NullMemento;
-        }
-
-        public override int GetHashCode()
-        {
-            return 0;
-        }
-
         public override string ToString()
         {
             return "NullMemento()";
+        }
+
+        public bool ValueEquals(IMemento other)
+        {
+            return other is NullMemento;
+        }
+
+        public void Accept(IMementoVisitor visitor)
+        {
+            visitor.Visit(this);
         }
     }
 
@@ -47,29 +50,24 @@ namespace Yeast.Memento
 
         public string value;
 
-        public StringMemento()
-        {
-            value = null;
-        }
-
         public StringMemento(string value)
         {
             this.value = value;
         }
 
-        public override bool Equals(object obj)
-        {
-            return obj is StringMemento value && ((this.value == null && value.value == null) || this.value.Equals(value.value));
-        }
-
-        public override int GetHashCode()
-        {
-            return value.GetHashCode();
-        }
-
         public override string ToString()
         {
             return $"StringMemento(\"{value}\")";
+        }
+
+        public bool ValueEquals(IMemento other)
+        {
+            return other is StringMemento str && str.value == value;
+        }
+
+        public void Accept(IMementoVisitor visitor)
+        {
+            visitor.Visit(this);
         }
     }
 
@@ -79,29 +77,25 @@ namespace Yeast.Memento
 
         public long value;
 
-        public IntegerMemento()
-        {
-            value = 0;
-        }
-
         public IntegerMemento(long value)
         {
             this.value = value;
         }
 
-        public override bool Equals(object obj)
-        {
-            return obj is IntegerMemento value && this.value.Equals(value.value);
-        }
-
-        public override int GetHashCode()
-        {
-            return value.GetHashCode();
-        }
-
         public override string ToString()
         {
             return $"IntegerMemento({value})";
+        }
+
+        public bool ValueEquals(IMemento other)
+        {
+            if (other is DecimalMemento dec) return dec.value == value;
+            else return other is IntegerMemento integer && integer.value == value;
+        }
+
+        public void Accept(IMementoVisitor visitor)
+        {
+            visitor.Visit(this);
         }
     }
 
@@ -111,29 +105,30 @@ namespace Yeast.Memento
 
         public double value;
 
-        public DecimalMemento()
-        {
-            value = 0;
-        }
-
         public DecimalMemento(double value)
         {
             this.value = value;
         }
 
-        public override bool Equals(object obj)
-        {
-            return obj is DecimalMemento value && this.value.Equals(value.value);
-        }
-
-        public override int GetHashCode()
-        {
-            return value.GetHashCode();
-        }
-
         public override string ToString()
         {
-            return $"FloatMemento({value})";
+            return $"DecimalMemento({value})";
+        }
+
+        public bool ValueEquals(IMemento other)
+        {
+            if (other is IntegerMemento integer) return integer.value == value;
+            else if (other is DecimalMemento dec)
+            {
+                if (double.IsNaN(dec.value) && double.IsNaN(value)) return true;
+                else return dec.value == value;
+            }
+            else return false;
+        }
+
+        public void Accept(IMementoVisitor visitor)
+        {
+            visitor.Visit(this);
         }
     }
 
@@ -153,19 +148,19 @@ namespace Yeast.Memento
             this.value = value;
         }
 
-        public override bool Equals(object obj)
-        {
-            return obj is BoolMemento value && this.value.Equals(value.value);
-        }
-
-        public override int GetHashCode()
-        {
-            return value.GetHashCode();
-        }
-
         public override string ToString()
         {
-            return $"BooleanMemento({value})";
+            return $"BoolMemento({value})";
+        }
+
+        public bool ValueEquals(IMemento other)
+        {
+            return other is BoolMemento boolean && boolean.value == value;
+        }
+
+        public void Accept(IMementoVisitor visitor)
+        {
+            visitor.Visit(this);
         }
     }
 
@@ -174,11 +169,6 @@ namespace Yeast.Memento
         public MementoType MementoType => MementoType.Array;
 
         public IMemento[] value;
-
-        public ArrayMemento()
-        {
-            value = null;
-        }
 
         public ArrayMemento(List<IMemento> value)
         {
@@ -190,20 +180,28 @@ namespace Yeast.Memento
             this.value = value;
         }
 
-        public override bool Equals(object obj)
-        {
-            return obj is ArrayMemento value && ((this.value == null && value.value == null) || this.value.SequenceEqual(value.value));
-        }
-
-        public override int GetHashCode()
-        {
-            return value.GetHashCode();
-        }
-
         public override string ToString()
         {
             var str = value == null ? "" : string.Join(", ", value.Select(v => v.ToString()));
             return $"ArrayMemento({str})";
+        }
+
+        public bool ValueEquals(IMemento other)
+        {
+            if (other is ArrayMemento arr && arr.value.Length == value.Length)
+            {
+                for (int i = 0; i < value.Length; i++)
+                {
+                    if (!value[i].ValueEquals(arr.value[i])) return false;
+                }
+                return true;
+            }
+            return false;
+        }
+
+        public void Accept(IMementoVisitor visitor)
+        {
+            visitor.Visit(this);
         }
     }
 
@@ -213,30 +211,44 @@ namespace Yeast.Memento
 
         public Dictionary<string, IMemento> value;
 
-        public DictMemento()
-        {
-            value = null;
-        }
-
         public DictMemento(Dictionary<string, IMemento> value)
         {
             this.value = value;
         }
 
-        public override bool Equals(object obj)
-        {
-            return obj is DictMemento value && ((this.value == null && value.value == null) || this.value.SequenceEqual(value.value));
-        }
-
-        public override int GetHashCode()
-        {
-            return value.GetHashCode();
-        }
-
         public override string ToString()
         {
             var str = string.Join(", ", value.Select(v => $"{v.Key}: {v.Value}"));
-            return $"MapMemento({str})";
+            return $"DictMemento({str})";
         }
+
+        public bool ValueEquals(IMemento other)
+        {
+            if (other is DictMemento dict && dict.value.Count == value.Count)
+            {
+                foreach (var pair in value)
+                {
+                    if (!dict.value.TryGetValue(pair.Key, out var val2) || !pair.Value.ValueEquals(val2)) return false;
+                }
+                return true;
+            }
+            return false;
+        }
+
+        public void Accept(IMementoVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
+    }
+
+    public interface IMementoVisitor
+    {
+        public void Visit(NullMemento memento);
+        public void Visit(StringMemento memento);
+        public void Visit(IntegerMemento memento);
+        public void Visit(DecimalMemento memento);
+        public void Visit(BoolMemento memento);
+        public void Visit(ArrayMemento memento);
+        public void Visit(DictMemento memento);
     }
 }

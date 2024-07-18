@@ -106,14 +106,14 @@ namespace Yeast.Test
         {
             var type = val?.GetType() ?? typeof(object);
             var converter = new MementoConverter();
-            var result = converter.Serialize(val, new ToMementoSettings() { maxDepth = 100 });
+            var result = converter.Serialize(val);
 
-            UnityEngine.Debug.Log($"Ion: {result}");
-            var val2 = converter.Deserialize(type, result, new FromMementoSettings());
+            UnityEngine.Debug.Log($"Memento: {result}");
+            var val2 = converter.Deserialize(type, result);
             Assert.AreEqual(val, val2);
 
-            var result2 = converter.Serialize(val2, new ToMementoSettings() { maxDepth = 100 });
-            Assert.AreEqual(result, result2);
+            var result2 = converter.Serialize(val2);
+            Assert.IsTrue(result.ValueEquals(result2));
         }
     }
 }

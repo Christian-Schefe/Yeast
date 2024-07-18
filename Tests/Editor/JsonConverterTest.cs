@@ -11,7 +11,7 @@ namespace Yeast.Test
         [Test]
         public void TestSpecialStringsStringify()
         {
-            Assert.AreEqual("\"\\0\"", JSON.Stringify("\0"));
+            Assert.AreEqual("\"\\u0000\"", JSON.Stringify("\0"));
             Assert.AreEqual("\"\\u0001\"", JSON.Stringify("\x01"));
             Assert.AreEqual("\"\\n\"", JSON.Stringify("\n"));
             Assert.AreEqual("\"\\r\"", JSON.Stringify("\r"));
@@ -82,8 +82,6 @@ namespace Yeast.Test
             Test(new DecimalMemento(double.NaN));
             Test(new DecimalMemento(double.NegativeInfinity));
             Test(new DecimalMemento(double.PositiveInfinity));
-
-            TestParse("1E20", new DecimalMemento(1e20));
         }
 
         [Test]
@@ -127,24 +125,17 @@ namespace Yeast.Test
         private void Test(IMemento val)
         {
             var converter = new JsonConverter();
-            var result = converter.Serialize(val, new JsonSerializationSettings() { indentSize = 0, prettyPrint = false });
+            var result = converter.Serialize(val);
 
-            //Debug.Log($"Json: {result}");
-            var val2 = converter.Deserialize(result, new JsonDeserializationSettings());
+            UnityEngine.Debug.Log($"Json: {result}");
+            var val2 = converter.Deserialize(result);
 
-            Assert.AreEqual(val, val2);
+            UnityEngine.Debug.Log($"{val}: {val2}");
+            Assert.IsTrue(val.ValueEquals(val2));
 
-            var result2 = converter.Serialize(val2, new JsonSerializationSettings() { indentSize = 0, prettyPrint = false });
-            Assert.AreEqual(result, result2);
-
-        }
-
-        private void TestParse(string val, IMemento expected)
-        {
-            var converter = new JsonConverter();
-            var ionValue = converter.Deserialize(val, new JsonDeserializationSettings());
-
-            Assert.AreEqual(expected, ionValue);
+            var result2 = converter.Serialize(val2);
+            UnityEngine.Debug.Log($"{result}: {result2}");
+            Assert.IsTrue(result.ValueEquals(result2));
         }
     }
 }

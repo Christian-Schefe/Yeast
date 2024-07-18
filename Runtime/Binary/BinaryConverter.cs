@@ -1,22 +1,18 @@
 using System;
 using System.Collections.Generic;
 using Yeast.Memento;
-using static UnityEditor.Progress;
 
 namespace Yeast.Binary
 {
-    public struct BinarySerializationSettings { }
-
-    public struct BinaryDeserializationSettings { }
 
     public class BinaryConversionException : Exception
     {
         public BinaryConversionException(string message) : base(message) { }
     }
 
-    public class BinaryConverter : BaseMementoConverter<byte[], BinarySerializationSettings, BinaryDeserializationSettings>
+    public class BinaryConverter : IMementoConverter<byte[]>
     {
-        protected override IMemento Deserialize(byte[] value)
+        public IMemento Deserialize(byte[] value)
         {
             int offset = 0;
             return DeserializeInternal(value, ref offset);
@@ -88,7 +84,7 @@ namespace Yeast.Binary
             return new DictMemento(values);
         }
 
-        protected override byte[] Serialize(IMemento value)
+        public byte[] Serialize(IMemento value)
         {
             List<byte> result = new() { (byte)value.MementoType };
             if (value is StringMemento stringValue)

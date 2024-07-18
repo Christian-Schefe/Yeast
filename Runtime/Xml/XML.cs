@@ -3,29 +3,27 @@ using Yeast.Memento;
 
 namespace Yeast.Xml
 {
-    public class XML : BaseConverter<string, XmlConverter, XmlSerializationSettings, XmlDeserializationSettings>
+    public class XML
     {
         private static readonly XML instance = new();
 
-        private XML() : base() { }
+        private readonly MementoConverter mementoConverter;
+        private readonly XmlConverter xmlConverter;
 
-        private static (XmlSerializationSettings, ToMementoSettings) CreateSerializationSettings()
+        private XML()
         {
-            return (new XmlSerializationSettings(), new ToMementoSettings() { maxDepth = 100 });
+            mementoConverter = new();
+            xmlConverter = new();
         }
 
-        private static (XmlDeserializationSettings, FromMementoSettings) CreateDeserializationSettings()
-        {
-            return (new XmlDeserializationSettings(), new FromMementoSettings { ignoreExtraFields = false, useDefaultSetting = FromMementoSettings.UseDefaultSetting.Never });
-        }
 
         /// <summary>
         /// Converts an object to XML.
         /// </summary>
         public static string Serialize(object value)
         {
-            var settings = CreateSerializationSettings();
-            return instance.Serialize(value, settings.Item2, settings.Item1);
+            var memento = instance.mementoConverter.Serialize(value);
+            return instance.xmlConverter.Serialize(memento);
         }
 
         /// <summary>
@@ -75,8 +73,8 @@ namespace Yeast.Xml
         /// </summary>
         public static object Deserialize(Type type, string bytes)
         {
-            var settings = CreateDeserializationSettings();
-            return instance.Deserialize(type, bytes, settings.Item2, settings.Item1);
+            var memento = instance.xmlConverter.Deserialize(bytes);
+            return instance.mementoConverter.Deserialize(type, memento);
         }
 
         /// <summary>

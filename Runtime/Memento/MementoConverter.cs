@@ -5,30 +5,9 @@ using Yeast.Utils;
 
 namespace Yeast.Memento
 {
-    public struct ToMementoSettings
-    {
-        public int maxDepth;
-    }
-
-    public struct FromMementoSettings
-    {
-        public UseDefaultSetting useDefaultSetting;
-        public bool ignoreExtraFields;
-
-        public enum UseDefaultSetting
-        {
-            Never, ForMissingFields, ForMissingOrMismatchedFields
-        }
-    }
-
     public class MementoConversionException : Exception
     {
         public MementoConversionException(string message) : base(message) { }
-    }
-
-    public class InternalException : MementoConversionException
-    {
-        public InternalException(string message) : base(message) { }
     }
 
     public class TypeMismatchException : MementoConversionException
@@ -41,16 +20,16 @@ namespace Yeast.Memento
         public CircularReferenceException(string message) : base(message) { }
     }
 
-    public class MementoConverter : BaseObjectConverter<IMemento, ToMementoSettings, FromMementoSettings>
+    public class MementoConverter
     {
-        protected override IMemento Serialize(object value)
+        public IMemento Serialize(object value)
         {
             return Serialize(value, 0);
         }
 
         private IMemento Serialize(object value, int depth)
         {
-            if (depth > serializationSettings.maxDepth)
+            if (depth > 1000)
             {
                 throw new CircularReferenceException("Recursion limit reached. Your object may contain circular references.");
             }
@@ -111,113 +90,115 @@ namespace Yeast.Memento
                     intermediateMap.Add(field.Name, el);
                 }
 
-                if (TypeUtils.HasSingleAttribute(type, out IsDerivedClassAttribute attr))
+                if (TypeUtils.HasAttribute(type, out IsDerivedClassAttribute attr))
                 {
-                    if (!TypeUtils.HasAttribute<HasDerivedClassAttribute>(attr.BaseType, out var attrs))
-                    {
-                        throw new TypeMismatchException("Cannot serialize derived class without HasDerivedClassAttribute.");
-                    }
-                    var derivedClassAttr = attrs.Find(a => a.DerivedType == type)
-                        ?? throw new TypeMismatchException("Cannot serialize derived class without HasDerivedClassAttribute.");
-                    intermediateMap.Add("$type", new StringMemento(derivedClassAttr.Identifier));
+                    intermediateMap.Add("$type", new StringMemento(attr.Identifier));
                 }
 
                 return new DictMemento(intermediateMap);
             }
         }
 
-        protected override object Deserialize(Type type, IMemento value)
+        public object Deserialize(Type type, IMemento memento)
         {
-            if (type == null)
+            var visitor = new DeserializationMementoVisitor(this);
+            visitor.Visit(memento, type);
+            return visitor.result;
+        }
+
+        public class DeserializationMementoVisitor : IMementoVisitor
+        {
+            private readonly MementoConverter converter;
+            private Type type;
+
+            public object result;
+
+            public DeserializationMementoVisitor(MementoConverter converter)
             {
-                throw new ArgumentNullException("type");
-            }
-            else if (type.IsSubclassOf(typeof(UnityEngine.Object)))
-            {
-                throw new TypeMismatchException("Cannot deserialize to new instances of type '" + type.Name + ".'");
+                this.converter = converter;
             }
 
-            bool isInstantiable = TypeUtils.IsInstantiateable(type);
-            bool hasDerivedClassAttribute = TypeUtils.HasAttribute<HasDerivedClassAttribute>(type, out var attrs);
-            if (!isInstantiable && !hasDerivedClassAttribute)
+            public void Visit(IMemento memento, Type type)
             {
-                throw new TypeMismatchException("Cannot deserialize to new instances of type '" + type.Name + ".'");
+                this.type = type;
+                memento.Accept(this);
             }
 
-            var nullableType = Nullable.GetUnderlyingType(type);
-            if (nullableType != null) type = nullableType;
-            bool isNullable = nullableType != null;
-
-            if (value is NullMemento)
+            public void Visit(NullMemento memento)
             {
-                if (type == typeof(object) || type.IsClass || isNullable)
+                if (type.IsClass || Nullable.GetUnderlyingType(type) != null)
                 {
-                    return null;
+                    result = null;
                 }
-                throw new TypeMismatchException("Failed to convert null to " + type.Name + ": type not nullable");
+                else throw new TypeMismatchException("Failed to convert null to " + type.Name + ": type not nullable");
             }
-            else if (value is StringMemento stringValue)
+
+            public void Visit(StringMemento memento)
             {
                 if (type == typeof(string) || type == typeof(object))
                 {
-                    return stringValue.value;
+                    result = memento.value;
                 }
-                throw new TypeMismatchException("Failed to convert string to " + type.Name);
+                else throw new TypeMismatchException("Failed to convert string to " + type.Name);
             }
-            else if (value is IntegerMemento integerValue)
+
+            public void Visit(IntegerMemento memento)
             {
                 if (type == typeof(object))
                 {
-                    return integerValue.value;
+                    result = memento.value;
                 }
                 else if (TypeUtils.IsIntegerNumber(type) || TypeUtils.IsRationalNumber(type))
                 {
-                    return Convert.ChangeType(integerValue.value, type);
+                    result = Convert.ChangeType(memento.value, type);
                 }
                 else if (type.IsEnum)
                 {
-                    return Enum.ToObject(type, integerValue.value);
+                    result = Enum.ToObject(type, memento.value);
                 }
-                throw new TypeMismatchException("Failed to convert long to " + type.Name);
+                else throw new TypeMismatchException("Failed to convert long to " + type.Name);
             }
-            else if (value is DecimalMemento floatValue)
+
+            public void Visit(DecimalMemento memento)
             {
-                if (TypeUtils.IsRationalNumber(type))
+                if (TypeUtils.IsIntegerNumber(type) || TypeUtils.IsRationalNumber(type))
                 {
-                    return Convert.ChangeType(floatValue.value, type);
+                    result = Convert.ChangeType(memento.value, type);
                 }
                 else if (type == typeof(object))
                 {
-                    return floatValue.value;
+                    result = memento.value;
                 }
-                throw new TypeMismatchException("Failed to convert double to " + type.Name);
+                else throw new TypeMismatchException("Failed to convert double to " + type.Name);
             }
-            else if (value is BoolMemento boolValue)
+
+            public void Visit(BoolMemento memento)
             {
                 if (type == typeof(bool) || type == typeof(object))
                 {
-                    return boolValue.value;
+                    result = memento.value;
                 }
-                throw new TypeMismatchException("Failed to convert bool to " + type.Name);
+                else throw new TypeMismatchException("Failed to convert bool to " + type.Name);
             }
-            else if (value is ArrayMemento arrayValue)
+
+            public void Visit(ArrayMemento memento)
             {
                 if (type == typeof(object))
                 {
-                    var array = new object[arrayValue.value.Length];
-                    for (int i = 0; i < arrayValue.value.Length; i++)
+                    var array = new object[memento.value.Length];
+                    for (int i = 0; i < memento.value.Length; i++)
                     {
-                        array[i] = Deserialize(typeof(object), arrayValue.value[i]);
+                        array[i] = converter.Deserialize(typeof(object), memento.value[i]);
                     }
-                    return array;
+                    result = array;
                 }
                 else if (type.IsArray)
                 {
                     var elementType = type.GetElementType();
-                    object Transform(IMemento val) => Deserialize(elementType, val);
+                    object Transform(IMemento val) => converter.Deserialize(elementType, val);
 
-                    var arr = ArrayUtils.MementoToArray(elementType, type, Transform, arrayValue);
-                    return arr;
+                    var arr = ArrayUtils.MementoToArray(elementType, type, Transform, memento);
+                    result = arr;
                 }
                 else if (TypeUtils.IsCollection(type, out var elementType))
                 {
@@ -226,96 +207,95 @@ namespace Yeast.Memento
                         throw new TypeMismatchException("Failed to create instance of " + type.Name);
                     }
                     var wrapper = new CollectionWrapper(type, elementType, instance);
-                    foreach (var element in arrayValue.value)
+                    foreach (var element in memento.value)
                     {
-                        var elementObject = Deserialize(elementType, element);
+                        var elementObject = converter.Deserialize(elementType, element);
                         wrapper.Add(elementObject);
                     }
-                    return wrapper.GetCollection();
+                    result = wrapper.GetCollection();
                 }
-                throw new TypeMismatchException("Failed to convert array to " + type.Name);
+                else throw new TypeMismatchException("Failed to convert array to " + type.Name);
             }
-            else if (value is DictMemento mapValue)
+
+            public void Visit(DictMemento memento)
             {
                 if (type == typeof(object))
                 {
                     var instance = new Dictionary<string, object>();
-                    foreach (var pair in mapValue.value)
+                    foreach (var pair in memento.value)
                     {
-                        object pairValue = Deserialize(typeof(object), pair.Value);
+                        object pairValue = converter.Deserialize(typeof(object), pair.Value);
                         instance.Add(pair.Key, pairValue);
                     }
-                    return instance;
+                    result = instance;
                 }
                 else if (type.IsClass || TypeUtils.IsStruct(type))
                 {
-                    string typeID = mapValue.value.ContainsKey("$type") ? ((StringMemento)mapValue.value["$type"]).value : null;
-                    if (!isInstantiable && typeID == null)
+                    string typeID = memento.value.ContainsKey("$type") ? ((StringMemento)memento.value["$type"]).value : null;
+
+                    if (!TypeUtils.IsInstantiateable(type) && typeID == null)
                     {
                         throw new TypeMismatchException("Failed to convert map to " + type.Name + ": type is not instantiateable and there is no type ID");
                     }
 
                     if (typeID != null)
                     {
-                        var attr = attrs.Find(a => a.Identifier == typeID)
-                            ?? throw new TypeMismatchException("Failed to convert map to " + type.Name + ": type ID does not match any derived class");
-                        if (!type.IsAssignableFrom(attr.DerivedType))
+                        bool hasDerivedClassAttribute = TypeUtils.HasAttribute(type, out HasDerivedClassesAttribute attr);
+                        if (!hasDerivedClassAttribute)
                         {
-                            throw new TypeMismatchException("Failed to convert map to " + type.Name + $": {attr.DerivedType.Name} is not a derived type");
+                            throw new TypeMismatchException("Failed to convert map to " + type.Name + ": type does not have a HasDerivedClassesAttribute");
                         }
-                        mapValue.value.Remove("$type");
-                        return Deserialize(attr.DerivedType, mapValue);
-                    }
+                        Type derivedType = null;
+                        foreach (var t in attr.DerivedTypes)
+                        {
+                            if (TypeUtils.HasAttribute(t, out IsDerivedClassAttribute derivedAttr) && derivedAttr.Identifier == typeID)
+                            {
+                                derivedType = t;
+                                break;
+                            }
+                        }
 
-                    if (!TypeUtils.TryCreateInstance(type, out object instance))
-                    {
-                        throw new TypeMismatchException("Failed to create instance of " + type.Name);
-                    }
-                    var unusedKeys = new HashSet<string>(mapValue.value.Keys);
-                    foreach (var field in TypeUtils.GetFields(type))
-                    {
-                        string fieldName = field.Name;
-                        if (!mapValue.value.TryGetValue(fieldName, out IMemento fieldValue))
+                        if (derivedType is null)
                         {
-                            if (deserializationSettings.useDefaultSetting == FromMementoSettings.UseDefaultSetting.ForMissingFields
-                                || deserializationSettings.useDefaultSetting == FromMementoSettings.UseDefaultSetting.ForMissingOrMismatchedFields)
+                            throw new TypeMismatchException("Failed to convert map to " + type.Name + ": type ID does not match any derived class");
+                        }
+                        if (!type.IsAssignableFrom(derivedType))
+                        {
+                            throw new TypeMismatchException("Failed to convert map to " + type.Name + $": {derivedType.Name} is not a derived type");
+                        }
+                        memento.value.Remove("$type");
+                        Visit(new DictMemento(memento.value), derivedType);
+                    }
+                    else
+                    {
+                        if (!TypeUtils.TryCreateInstance(type, out object instance))
+                        {
+                            throw new TypeMismatchException("Failed to create instance of " + type.Name);
+                        }
+                        foreach (var field in TypeUtils.GetFields(type))
+                        {
+                            string fieldName = field.Name;
+                            if (!memento.value.TryGetValue(fieldName, out IMemento fieldValue))
                             {
                                 field.SetValue(instance, TypeUtils.DefaultValue(type));
-                                unusedKeys.Remove(fieldName);
                                 continue;
                             }
-                            throw new TypeMismatchException("Failed to convert map to " + type.Name + ": missing field " + fieldName);
-                        }
-                        try
-                        {
-                            object fieldValueObject = Deserialize(field.FieldType, fieldValue);
-                            field.SetValue(instance, fieldValueObject);
-                            unusedKeys.Remove(fieldName);
-                            field.SetValue(instance, fieldValueObject);
-                            unusedKeys.Remove(fieldName);
-                        }
-                        catch (TypeMismatchException e)
-                        {
-                            if (deserializationSettings.useDefaultSetting == FromMementoSettings.UseDefaultSetting.ForMissingOrMismatchedFields)
+
+                            try
+                            {
+                                object fieldValueObject = converter.Deserialize(field.FieldType, fieldValue);
+                                field.SetValue(instance, fieldValueObject);
+                            }
+                            catch (TypeMismatchException)
                             {
                                 field.SetValue(instance, TypeUtils.DefaultValue(type));
-                                unusedKeys.Remove(fieldName);
                                 continue;
                             }
-                            throw e;
                         }
+                        result = instance;
                     }
-                    if (!deserializationSettings.ignoreExtraFields && unusedKeys.Count > 0)
-                    {
-                        throw new TypeMismatchException("Failed to convert map to " + type.Name + ": extra fields");
-                    }
-                    return instance;
                 }
-                throw new TypeMismatchException("Failed to convert map to " + type.Name);
-            }
-            else
-            {
-                throw new InternalException("Unknown Memento Type" + type.Name);
+                else throw new TypeMismatchException("Failed to convert map to " + type.Name);
             }
         }
     }
