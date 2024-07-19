@@ -82,7 +82,37 @@ namespace Yeast.Xml
 
         public void Visit(XmlElement xml)
         {
-            throw new System.InvalidOperationException("Cannot convert XmlElement to StringMemento");
+            var name = xml.name.ToLowerInvariant();
+            if (xml.children.Count == 0)
+            {
+                if (name == "null")
+                {
+                    result = new StringMemento(null);
+                }
+                else if (name == "emptystring" || name == "empty-string" || name == "empty_string")
+                {
+                    result = new StringMemento("");
+                }
+                else
+                {
+                    throw new System.InvalidOperationException("Cannot convert XmlElement to StringMemento");
+                }
+            }
+            else if (xml.children.Count == 1)
+            {
+                if (name == "string" && xml.children[0] is XmlString str)
+                {
+                    Visit(str);
+                }
+                else
+                {
+                    throw new System.InvalidOperationException("Cannot convert XmlElement to StringMemento");
+                }
+            }
+            else
+            {
+                throw new System.InvalidOperationException("Cannot convert XmlElement to StringMemento");
+            }
         }
     }
 
@@ -102,7 +132,37 @@ namespace Yeast.Xml
 
         public void Visit(XmlElement xml)
         {
-            throw new System.InvalidOperationException("Cannot convert XmlElement to IntegerMemento");
+            var name = xml.name.ToLowerInvariant();
+            if (xml.children.Count == 0)
+            {
+                if (name == "zero")
+                {
+                    result = new IntegerMemento(0);
+                }
+                else if (name == "one")
+                {
+                    result = new IntegerMemento(1);
+                }
+                else
+                {
+                    throw new System.InvalidOperationException("Cannot convert XmlElement to IntegerMemento");
+                }
+            }
+            else if (xml.children.Count == 1)
+            {
+                if ((name == "integer" || name == "int") && xml.children[0] is XmlString str)
+                {
+                    Visit(str);
+                }
+                else
+                {
+                    throw new System.InvalidOperationException("Cannot convert XmlElement to IntegerMemento");
+                }
+            }
+            else
+            {
+                throw new System.InvalidOperationException("Cannot convert XmlElement to IntegerMemento");
+            }
         }
     }
 
@@ -122,7 +182,37 @@ namespace Yeast.Xml
 
         public void Visit(XmlElement xml)
         {
-            throw new System.InvalidOperationException("Cannot convert XmlElement to DecimalMemento");
+            var name = xml.name.ToLowerInvariant();
+            if (xml.children.Count == 0)
+            {
+                if (name == "zero")
+                {
+                    result = new DecimalMemento(0);
+                }
+                else if (name == "one")
+                {
+                    result = new DecimalMemento(1);
+                }
+                else
+                {
+                    throw new System.InvalidOperationException("Cannot convert XmlElement to DecimalMemento");
+                }
+            }
+            else if (xml.children.Count == 1)
+            {
+                if ((name == "float" || name == "double") && xml.children[0] is XmlString str)
+                {
+                    Visit(str);
+                }
+                else
+                {
+                    throw new System.InvalidOperationException("Cannot convert XmlElement to DecimalMemento");
+                }
+            }
+            else
+            {
+                throw new System.InvalidOperationException("Cannot convert XmlElement to DecimalMemento");
+            }
         }
     }
 
@@ -137,17 +227,50 @@ namespace Yeast.Xml
 
         public void Visit(XmlString xml)
         {
-            result = xml.value switch
+            var str = xml.value.ToLowerInvariant();
+            result = str switch
             {
                 "true" => new BoolMemento(true),
                 "false" => new BoolMemento(false),
+                "1" => new BoolMemento(true),
+                "0" => new BoolMemento(false),
                 _ => throw new System.InvalidOperationException("Cannot convert XmlString to BoolMemento")
             };
         }
 
         public void Visit(XmlElement xml)
         {
-            throw new System.InvalidOperationException("Cannot convert XmlElement to BoolMemento");
+            var name = xml.name.ToLowerInvariant();
+            if (xml.children.Count == 0)
+            {
+                if (name == "true")
+                {
+                    result = new BoolMemento(true);
+                }
+                else if (name == "false")
+                {
+                    result = new BoolMemento(false);
+                }
+                else
+                {
+                    throw new System.InvalidOperationException("Cannot convert XmlElement to BoolMemento");
+                }
+            }
+            else if (xml.children.Count == 1)
+            {
+                if ((name == "bool" || name == "boolean") && xml.children[0] is XmlString str)
+                {
+                    Visit(str);
+                }
+                else
+                {
+                    throw new System.InvalidOperationException("Cannot convert XmlElement to BoolMemento");
+                }
+            }
+            else
+            {
+                throw new System.InvalidOperationException("Cannot convert XmlElement to BoolMemento");
+            }
         }
     }
 }
