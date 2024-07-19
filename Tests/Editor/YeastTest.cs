@@ -46,6 +46,25 @@ namespace Yeast.Test
         public void TempTest()
         {
             Debug.Log(Yeast.ToJson(typeof(School).AssemblyQualifiedName));
+
+
+            object obj = Yeast.FromJson<int>("66");
+            Assert.AreEqual(66, obj);
+
+            obj = Yeast.FromJson<bool>("\"true\"");
+            Assert.AreEqual(true, obj);
+
+            obj = Yeast.FromJson<string>("\"null\"");
+            Assert.AreEqual("null", obj);
+
+            obj = Yeast.FromJson<string>("null");
+            Assert.AreEqual(null, obj);
+
+            obj = Yeast.FromJson<string>("\"null\"");
+            Assert.AreEqual("null", obj);
+
+            obj = Yeast.FromJson<string>("55.266e2");
+            Assert.AreEqual("5526.6", obj);
         }
 
         private void Test<T>(T obj)

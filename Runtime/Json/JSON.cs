@@ -11,12 +11,10 @@ namespace Yeast.Json
         private static readonly JSON instance = new();
 
         private readonly MementoConverter mementoConverter;
-        private readonly JsonConverter jsonConverter;
 
         private JSON()
         {
             mementoConverter = new();
-            jsonConverter = new();
         }
 
         /// <summary>
@@ -25,8 +23,9 @@ namespace Yeast.Json
         public static string Stringify(object value)
         {
             var memento = instance.mementoConverter.Serialize(value);
-            var jsonValue = instance.jsonConverter.Serialize(memento);
-            return jsonValue.ToString();
+            var mementoVisitor = new ToJsonMementoVisitor();
+            memento.Accept(mementoVisitor);
+            return mementoVisitor.GetResult().ToString();
         }
 
         /// <summary>
@@ -77,7 +76,8 @@ namespace Yeast.Json
         public static object Parse(Type type, string text)
         {
             var jsonValue = JsonValue.FromString(text);
-            var memento = instance.jsonConverter.Deserialize(jsonValue);
+            var translator = new JsonToMementoTranslator();
+            var memento = translator.Convert(jsonValue, type);
             return instance.mementoConverter.Deserialize(type, memento);
         }
 

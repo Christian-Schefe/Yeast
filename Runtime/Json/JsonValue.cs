@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Text;
-using Yeast.Memento;
 using Yeast.Utils;
 
 namespace Yeast.Json
@@ -287,5 +286,10 @@ namespace Yeast.Json
         public void Visit(JsonArray json);
         public void Visit(JsonObject json);
         public void Visit(JsonNull json);
+    }
+
+    public interface IJsonVisitor<T> : IJsonVisitor
+    {
+        public T GetResult();
     }
 }

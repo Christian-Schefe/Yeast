@@ -251,4 +251,9 @@ namespace Yeast.Memento
         public void Visit(ArrayMemento memento);
         public void Visit(DictMemento memento);
     }
+
+    public interface IMementoVisitor<T> : IMementoVisitor
+    {
+        public T GetResult();
+    }
 }
