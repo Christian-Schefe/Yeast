@@ -1,17 +1,24 @@
 using System;
 using System.Collections.Generic;
-using Yeast.Json;
 using Yeast.Utils;
+using Yeast.Xml;
 
 namespace Yeast.Memento
 {
-    public class JsonToMementoTranslator
+    public class XmlToMementoTranslator
     {
-        public IMemento Convert(JsonValue jsonValue, Type type)
+        public IMemento Convert(XmlValue xmlValue, Type type)
         {
-            if (jsonValue is JsonNull)
+            if (xmlValue is XmlElement element && element.children.Count == 0)
             {
-                return new NullMemento();
+                if (element.name == "Null")
+                {
+                    return new NullMemento();
+                }
+                else if (element.name == "EmptyString")
+                {
+                    return new StringMemento("");
+                }
             }
 
             Type underlyingType = Nullable.GetUnderlyingType(type);
@@ -20,69 +27,72 @@ namespace Yeast.Memento
 
             if (type == typeof(string))
             {
-                var visitor = new ToStringMementoJsonVisitor();
-                jsonValue.Accept(visitor);
+                var visitor = new ToStringMementoXmlVisitor();
+                xmlValue.Accept(visitor);
                 return visitor.GetResult();
             }
             else if (type == typeof(bool))
             {
-                var visitor = new ToBoolMementoJsonVisitor();
-                jsonValue.Accept(visitor);
+                var visitor = new ToBoolMementoXmlVisitor();
+                xmlValue.Accept(visitor);
                 return visitor.GetResult();
             }
             else if (TypeUtils.IsIntegerNumber(type) || type.IsEnum)
             {
-                var visitor = new ToIntegerMementoJsonVisitor();
-                jsonValue.Accept(visitor);
+                var visitor = new ToIntegerMementoXmlVisitor();
+                xmlValue.Accept(visitor);
                 return visitor.GetResult();
             }
             else if (TypeUtils.IsRationalNumber(type))
             {
-                var visitor = new ToDecimalMementoJsonVisitor();
-                jsonValue.Accept(visitor);
+                var visitor = new ToDecimalMementoXmlVisitor();
+                xmlValue.Accept(visitor);
                 return visitor.GetResult();
             }
             else if (type.IsArray)
             {
-                if (jsonValue is not JsonArray jsonArray)
+                if (xmlValue is not XmlElement xmlArray)
                 {
-                    throw new InvalidOperationException($"Cannot convert {jsonValue.GetType().Name} to DictMemento");
+                    throw new InvalidOperationException($"Cannot convert {xmlValue.GetType().Name} to DictMemento");
                 }
                 var elementType = type.GetElementType();
-                IMemento ConvertArray(JsonArray arr, Type type, int rank)
+                IMemento ConvertArray(XmlElement arr, Type type, int rank)
                 {
                     List<IMemento> list = new();
-                    foreach (var item in arr.value)
+                    foreach (var item in arr.children)
                     {
-                        if (rank == 1) list.Add(Convert(item, elementType));
-                        else list.Add(ConvertArray((JsonArray)item, type, rank - 1));
+                        var el = ((XmlElement)item).children[0];
+                        if (rank == 1) list.Add(Convert(el, elementType));
+                        else list.Add(ConvertArray((XmlElement)el, type, rank - 1));
                     }
                     return new ArrayMemento(list);
                 }
-                return ConvertArray(jsonArray, type, type.GetArrayRank());
+                return ConvertArray(xmlArray, type, type.GetArrayRank());
             }
             else if (TypeUtils.IsCollection(type, out var elementType))
             {
-                if (jsonValue is not JsonArray jsonArray)
+                if (xmlValue is not XmlElement xmlArray)
                 {
-                    throw new InvalidOperationException($"Cannot convert {jsonValue.GetType().Name} to DictMemento");
+                    throw new InvalidOperationException($"Cannot convert {xmlValue.GetType().Name} to DictMemento");
                 }
                 var arr = new List<IMemento>();
-                foreach (var item in jsonArray.value)
+                foreach (var item in xmlArray.children)
                 {
-                    arr.Add(Convert(item, elementType));
+                    var el = ((XmlElement)item).children[0];
+                    arr.Add(Convert(el, elementType));
                 }
                 return new ArrayMemento(arr);
             }
             else if (type.IsClass || TypeUtils.IsStruct(type))
             {
-                if (jsonValue is not JsonObject jsonObject)
+                if (xmlValue is not XmlElement xmlObject)
                 {
-                    throw new InvalidOperationException($"Cannot convert {jsonValue.GetType().Name} to DictMemento");
+                    throw new InvalidOperationException($"Cannot convert {xmlValue.GetType().Name} to DictMemento");
                 }
-                if (jsonObject.value.TryGetValue("$type", out var typeValue))
+                var obj = new Dictionary<string, IMemento>();
+
+                if (xmlObject.attributes.TryGetValue("$type", out var typeIdentifier))
                 {
-                    var typeIdentifier = typeValue.AsString();
                     if (TypeUtils.HasAttribute(type, out HasDerivedClassesAttribute attr))
                     {
                         foreach (var derivedType in attr.DerivedTypes)
@@ -97,19 +107,21 @@ namespace Yeast.Memento
                             }
                         }
                     }
+                    obj.Add("$type", new StringMemento(typeIdentifier));
                 }
 
-                var typeDict = new Dictionary<string, Type>() { { "$type", typeof(string) } };
+                var typeDict = new Dictionary<string, Type>();
                 foreach (var field in TypeUtils.GetFields(type))
                 {
                     typeDict[field.Name] = field.FieldType;
                 }
 
-                var obj = new Dictionary<string, IMemento>();
-                foreach (var pair in jsonObject.value)
+                foreach (var item in xmlObject.children)
                 {
-                    obj.Add(pair.Key, Convert(pair.Value, typeDict[pair.Key]));
+                    var el = (XmlElement)item;
+                    obj.Add(el.name, Convert(el.children[0], typeDict[el.name]));
                 }
+
                 return new DictMemento(obj);
 
             }

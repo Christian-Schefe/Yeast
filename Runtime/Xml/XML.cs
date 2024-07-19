@@ -1,4 +1,5 @@
 using System;
+using Yeast.Json;
 using Yeast.Memento;
 
 namespace Yeast.Xml
@@ -8,12 +9,10 @@ namespace Yeast.Xml
         private static readonly XML instance = new();
 
         private readonly MementoConverter mementoConverter;
-        private readonly XmlConverter xmlConverter;
 
         private XML()
         {
             mementoConverter = new();
-            xmlConverter = new();
         }
 
 
@@ -23,7 +22,9 @@ namespace Yeast.Xml
         public static string Serialize(object value)
         {
             var memento = instance.mementoConverter.Serialize(value);
-            return instance.xmlConverter.Serialize(memento);
+            var mementoVisitor = new ToXmlMementoVisitor();
+            memento.Accept(mementoVisitor);
+            return mementoVisitor.GetResult().ToString();
         }
 
         /// <summary>
@@ -71,20 +72,22 @@ namespace Yeast.Xml
         /// <summary>
         /// Converts XML to an object.
         /// </summary>
-        public static object Deserialize(Type type, string bytes)
+        public static object Deserialize(Type type, string text)
         {
-            var memento = instance.xmlConverter.Deserialize(bytes);
+            var xmlValue = XmlValue.FromString(text);
+            var translator = new XmlToMementoTranslator();
+            var memento = translator.Convert(xmlValue, type);
             return instance.mementoConverter.Deserialize(type, memento);
         }
 
         /// <summary>
         /// Tries to convert XML to an object.
         /// </summary>
-        public static bool TryDeserialize(Type type, string bytes, out object result)
+        public static bool TryDeserialize(Type type, string text, out object result)
         {
             try
             {
-                result = Deserialize(type, bytes);
+                result = Deserialize(type, text);
                 return true;
             }
             catch
