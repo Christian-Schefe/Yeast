@@ -4,38 +4,45 @@ using Yeast.Utils;
 
 namespace Yeast.Xml
 {
-    public class ToXmlMementoVisitor : IMementoVisitor<XmlValue>
+    public class ToXmlMementoVisitor : IMementoVisitor<XmlDocument>
     {
-        public XmlValue result;
+        private List<XmlValue> children = new();
+        private Dictionary<string, string> parentAttributes = new();
 
-        public XmlValue GetResult()
+        public XmlDocument GetResult()
         {
-            return result;
+            var root = new XmlElement("root", parentAttributes, children);
+            return new XmlDocument(root, "1.0", "UTF-8");
         }
 
         public void Visit(NullMemento memento)
         {
-            result = new XmlElement("Null", new(), new());
+            parentAttributes = new() { { "null", "true" } };
+            children = new();
         }
 
         public void Visit(StringMemento memento)
         {
-            result = new XmlString(memento.value);
+            parentAttributes = new();
+            children = new() { new XmlString(memento.value) };
         }
 
         public void Visit(IntegerMemento memento)
         {
-            result = new XmlString(StringUtils.LongToString(memento.value));
+            parentAttributes = new();
+            children = new() { new XmlString(StringUtils.LongToString(memento.value)) };
         }
 
         public void Visit(DecimalMemento memento)
         {
-            result = new XmlString(StringUtils.DoubleToString(memento.value));
+            parentAttributes = new();
+            children = new() { new XmlString(StringUtils.DoubleToString(memento.value)) };
         }
 
         public void Visit(BoolMemento memento)
         {
-            result = new XmlString(memento.value ? "true" : "false");
+            parentAttributes = new();
+            children = new() { new XmlString(memento.value ? "true" : "false") };
         }
 
         public void Visit(ArrayMemento memento)
@@ -44,9 +51,10 @@ namespace Yeast.Xml
             foreach (var item in memento.value)
             {
                 item.Accept(this);
-                list.Add(new XmlElement("Item", new(), new() { result }));
+                list.Add(new XmlElement("element", parentAttributes, children));
             }
-            result = new XmlElement("List", new(), list);
+            parentAttributes = new();
+            children = list;
         }
 
         public void Visit(DictMemento memento)
@@ -55,66 +63,18 @@ namespace Yeast.Xml
             var attributes = new Dictionary<string, string>();
             foreach (var (key, value) in memento.value)
             {
-                if (key == "$type") attributes.Add("$type", ((StringMemento)value).value);
+                if (key == "$type") attributes.Add("derivedType", ((StringMemento)value).value);
                 else
                 {
                     value.Accept(this);
-                    list.Add(new XmlElement(key, new(), new() { result }));
+                    list.Add(new XmlElement(key, parentAttributes, children));
                 }
             }
-            result = new XmlElement("Object", attributes, list);
+            parentAttributes = attributes;
+            children = list;
         }
     }
 
-    public class ToStringMementoXmlVisitor : IXmlVisitor<IMemento>
-    {
-        public StringMemento result;
-
-        public IMemento GetResult()
-        {
-            return result;
-        }
-
-        public void Visit(XmlString xml)
-        {
-            result = new StringMemento(xml.value);
-        }
-
-        public void Visit(XmlElement xml)
-        {
-            var name = xml.name.ToLowerInvariant();
-            if (xml.children.Count == 0)
-            {
-                if (name == "null")
-                {
-                    result = new StringMemento(null);
-                }
-                else if (name == "emptystring" || name == "empty-string" || name == "empty_string")
-                {
-                    result = new StringMemento("");
-                }
-                else
-                {
-                    throw new System.InvalidOperationException("Cannot convert XmlElement to StringMemento");
-                }
-            }
-            else if (xml.children.Count == 1)
-            {
-                if (name == "string" && xml.children[0] is XmlString str)
-                {
-                    Visit(str);
-                }
-                else
-                {
-                    throw new System.InvalidOperationException("Cannot convert XmlElement to StringMemento");
-                }
-            }
-            else
-            {
-                throw new System.InvalidOperationException("Cannot convert XmlElement to StringMemento");
-            }
-        }
-    }
 
     public class ToIntegerMementoXmlVisitor : IXmlVisitor<IMemento>
     {

@@ -7,18 +7,15 @@ namespace Yeast.Memento
 {
     public class XmlToMementoTranslator
     {
-        public IMemento Convert(XmlValue xmlValue, Type type)
+        public IMemento Convert(XmlElement xmlElement, Type type)
         {
-            if (xmlValue is XmlElement element && element.children.Count == 0)
+            if (xmlElement.attributes.TryGetValue("null", out var nullValue) && nullValue == "true")
             {
-                if (element.name == "Null")
+                if (!TypeUtils.IsNullable(type))
                 {
-                    return new NullMemento();
+                    throw new InvalidOperationException("Cannot convert null to non-nullable type");
                 }
-                else if (element.name == "EmptyString")
-                {
-                    return new StringMemento("");
-                }
+                return new NullMemento();
             }
 
             Type underlyingType = Nullable.GetUnderlyingType(type);
@@ -27,86 +24,76 @@ namespace Yeast.Memento
 
             if (type == typeof(string))
             {
-                var visitor = new ToStringMementoXmlVisitor();
-                xmlValue.Accept(visitor);
-                return visitor.GetResult();
+                if (xmlElement.children.Count == 0) return new StringMemento("");
+                else if (xmlElement.children.Count == 1 && xmlElement.children[0] is XmlString xmlString)
+                {
+                    return new StringMemento(xmlString.value);
+                }
+                else throw new InvalidOperationException("Cannot convert XmlElement to StringMemento");
             }
             else if (type == typeof(bool))
             {
+                if (xmlElement.children.Count != 1 || xmlElement.children[0] is not XmlString str)
+                    throw new InvalidOperationException("Cannot convert XmlElement to BoolMemento");
                 var visitor = new ToBoolMementoXmlVisitor();
-                xmlValue.Accept(visitor);
+                xmlElement.children[0].Accept(visitor);
                 return visitor.GetResult();
             }
             else if (TypeUtils.IsIntegerNumber(type) || type.IsEnum)
             {
+                if (xmlElement.children.Count != 1) throw new InvalidOperationException("Cannot convert XmlElement to IntegerMemento");
                 var visitor = new ToIntegerMementoXmlVisitor();
-                xmlValue.Accept(visitor);
+                xmlElement.children[0].Accept(visitor);
                 return visitor.GetResult();
             }
             else if (TypeUtils.IsRationalNumber(type))
             {
+                if (xmlElement.children.Count != 1) throw new InvalidOperationException("Cannot convert XmlElement to DecimalMemento");
                 var visitor = new ToDecimalMementoXmlVisitor();
-                xmlValue.Accept(visitor);
+                xmlElement.children[0].Accept(visitor);
                 return visitor.GetResult();
             }
             else if (type.IsArray)
             {
-                if (xmlValue is not XmlElement xmlArray)
-                {
-                    throw new InvalidOperationException($"Cannot convert {xmlValue.GetType().Name} to DictMemento");
-                }
                 var elementType = type.GetElementType();
                 IMemento ConvertArray(XmlElement arr, Type type, int rank)
                 {
                     List<IMemento> list = new();
                     foreach (var item in arr.children)
                     {
-                        var el = ((XmlElement)item).children[0];
-                        if (rank == 1) list.Add(Convert(el, elementType));
-                        else list.Add(ConvertArray((XmlElement)el, type, rank - 1));
+                        var el = (XmlElement)item;
+                        if (rank != 1)
+                        {
+                            if (el.children.Count == 0) list.Add(new ArrayMemento(new List<IMemento>()));
+                            else list.Add(ConvertArray(el, type, rank - 1));
+                        }
+                        else list.Add(Convert(el, elementType));
                     }
                     return new ArrayMemento(list);
                 }
-                return ConvertArray(xmlArray, type, type.GetArrayRank());
+                return ConvertArray(xmlElement, type, type.GetArrayRank());
             }
             else if (TypeUtils.IsCollection(type, out var elementType))
             {
-                if (xmlValue is not XmlElement xmlArray)
-                {
-                    throw new InvalidOperationException($"Cannot convert {xmlValue.GetType().Name} to DictMemento");
-                }
                 var arr = new List<IMemento>();
-                foreach (var item in xmlArray.children)
+                foreach (var item in xmlElement.children)
                 {
-                    var el = ((XmlElement)item).children[0];
+                    var el = (XmlElement)item;
                     arr.Add(Convert(el, elementType));
                 }
                 return new ArrayMemento(arr);
             }
             else if (type.IsClass || TypeUtils.IsStruct(type))
             {
-                if (xmlValue is not XmlElement xmlObject)
-                {
-                    throw new InvalidOperationException($"Cannot convert {xmlValue.GetType().Name} to DictMemento");
-                }
                 var obj = new Dictionary<string, IMemento>();
 
-                if (xmlObject.attributes.TryGetValue("$type", out var typeIdentifier))
+                if (xmlElement.attributes.TryGetValue("derivedType", out var typeIdentifier))
                 {
-                    if (TypeUtils.HasAttribute(type, out HasDerivedClassesAttribute attr))
+                    if (TypeUtils.TryGetDerivedTypeById(type, typeIdentifier, out var derivedType))
                     {
-                        foreach (var derivedType in attr.DerivedTypes)
-                        {
-                            if (TypeUtils.HasAttribute<IsDerivedClassAttribute>(derivedType, out var derivedAttr))
-                            {
-                                if (derivedAttr.Identifier == typeIdentifier)
-                                {
-                                    type = derivedType;
-                                    break;
-                                }
-                            }
-                        }
+                        type = derivedType;
                     }
+                    else throw new InvalidOperationException($"Cannot find derived type {typeIdentifier} for {type}");
                     obj.Add("$type", new StringMemento(typeIdentifier));
                 }
 
@@ -116,14 +103,13 @@ namespace Yeast.Memento
                     typeDict[field.Name] = field.FieldType;
                 }
 
-                foreach (var item in xmlObject.children)
+                foreach (var item in xmlElement.children)
                 {
                     var el = (XmlElement)item;
-                    obj.Add(el.name, Convert(el.children[0], typeDict[el.name]));
+                    obj.Add(el.name, Convert(el, typeDict[el.name]));
                 }
 
                 return new DictMemento(obj);
-
             }
             else
             {

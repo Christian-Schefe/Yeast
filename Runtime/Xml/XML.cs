@@ -74,9 +74,9 @@ namespace Yeast.Xml
         /// </summary>
         public static object Deserialize(Type type, string text)
         {
-            var xmlValue = XmlValue.FromString(text);
+            var xmlDocument = XmlDocument.FromString(text);
             var translator = new XmlToMementoTranslator();
-            var memento = translator.Convert(xmlValue, type);
+            var memento = translator.Convert(xmlDocument.root, type);
             return instance.mementoConverter.Deserialize(type, memento);
         }
 

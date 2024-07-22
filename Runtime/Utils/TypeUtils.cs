@@ -159,5 +159,20 @@ namespace Yeast.Utils
             attribute = default;
             return false;
         }
+
+        public static bool TryGetDerivedTypeById(Type type, string typeIdentifier, out Type derivedType)
+        {
+            derivedType = null;
+            if (!HasAttribute(type, out HasDerivedClassesAttribute attr)) return false;
+
+            foreach (var t in attr.DerivedTypes)
+            {
+                if (!HasAttribute<IsDerivedClassAttribute>(t, out var derivedAttr) || derivedAttr.Identifier != typeIdentifier) continue;
+
+                derivedType = t;
+                return true;
+            }
+            return false;
+        }
     }
 }

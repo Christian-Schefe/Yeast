@@ -8,13 +8,42 @@ namespace Yeast.Xml
     {
         public abstract override string ToString();
 
-        public static XmlValue FromString(string xml)
+        public abstract void Accept(IXmlVisitor visitor);
+    }
+
+    public class XmlDocument
+    {
+        public XmlElement root;
+        public string version;
+        public string encoding;
+
+        public XmlDocument(XmlElement root)
         {
-            var parser = new XmlParser(xml);
-            return parser.ParseValue();
+            this.root = root;
+            version = "1.0";
+            encoding = "UTF-8";
         }
 
-        public abstract void Accept(IXmlVisitor visitor);
+        public XmlDocument(XmlElement root, string version, string encoding)
+        {
+            this.root = root;
+            this.version = version;
+            this.encoding = encoding;
+        }
+
+        public override string ToString()
+        {
+            var sb = new StringBuilder();
+            sb.Append($"<?xml version=\"{version}\" encoding=\"{encoding}\"?>");
+            sb.Append(root.ToString());
+            return sb.ToString();
+        }
+
+        public static XmlDocument FromString(string xml)
+        {
+            var parser = new XmlParser(xml);
+            return parser.ParseDocument();
+        }
     }
 
     public class XmlElement : XmlValue
@@ -46,10 +75,22 @@ namespace Yeast.Xml
                 return sb.ToString();
             }
 
-            sb.Append(">");
+            bool hasAddedSomething = false;
             foreach (var child in children)
-                sb.Append(child.ToString());
-            sb.Append($"</{name}>");
+            {
+                var str = child.ToString();
+                if (str.Length > 0)
+                {
+                    if (!hasAddedSomething)
+                    {
+                        sb.Append(">");
+                        hasAddedSomething = true;
+                    }
+                    sb.Append(str);
+                }
+            }
+            if (hasAddedSomething) sb.Append($"</{name}>");
+            else sb.Append($"/>");
 
             return sb.ToString();
         }
@@ -66,7 +107,7 @@ namespace Yeast.Xml
 
         public override void Accept(IXmlVisitor visitor) => visitor.Visit(this);
 
-        public override string ToString() => value.Length == 0 ? "<EmptyString/>" : StringUtils.EscapeJsonString(StringUtils.EscapeXMLString(value));
+        public override string ToString() => StringUtils.EscapeJsonString(StringUtils.EscapeXMLString(value));
     }
 
     public interface IXmlVisitor

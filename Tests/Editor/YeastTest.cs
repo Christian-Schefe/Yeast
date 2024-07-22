@@ -41,9 +41,6 @@ namespace Yeast.Test
         [Test]
         public void TempTest()
         {
-            Debug.Log(Yeast.ToJson(typeof(School).AssemblyQualifiedName));
-
-
             object obj = Yeast.FromJson<int>("66");
             Assert.AreEqual(66, obj);
 

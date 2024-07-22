@@ -15,6 +15,28 @@ namespace Yeast.Xml
             position = 0;
         }
 
+        public XmlDocument ParseDocument()
+        {
+            if (!TryParseProlog(out var version, out var encoding))
+            {
+                return new XmlDocument(ParseElement(), version, encoding);
+            }
+            else return new XmlDocument(ParseElement());
+        }
+
+        public bool TryParseProlog(out string version, out string encoding)
+        {
+            if (xml.Length < 5 || !IsString("<?xml")) { version = null; encoding = null; return false; }
+            ConsumeString("<?xml");
+            var attributes = ParseAttributes();
+            SkipWhitespace();
+            ConsumeString("?>");
+            if (attributes.Count != 2) throw new System.Exception("Invalid xml prolog");
+            version = attributes["version"];
+            encoding = attributes["encoding"];
+            return true;
+        }
+
         public XmlValue ParseValue()
         {
             var c = PeekChar();
@@ -96,7 +118,7 @@ namespace Yeast.Xml
         public Dictionary<string, string> ParseAttributes()
         {
             var attributes = new Dictionary<string, string>();
-            while (!IsChar('>') && !IsChar('/'))
+            while (!IsChar('>') && !IsChar('/') && !IsChar('?'))
             {
                 var name = ParseAttributeName();
                 var value = ParseAttributeValue();
