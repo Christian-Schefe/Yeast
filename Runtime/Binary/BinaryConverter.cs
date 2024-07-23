@@ -10,7 +10,7 @@ namespace Yeast.Binary
         public BinaryConversionException(string message) : base(message) { }
     }
 
-    public class BinaryConverter : IMementoConverter<byte[]>
+    public class BinaryConverter
     {
         public IMemento Deserialize(byte[] value)
         {

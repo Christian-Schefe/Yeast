@@ -1,6 +1,6 @@
 using System;
 
-[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Interface, AllowMultiple = true)]
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Interface, Inherited = false)]
 public class HasDerivedClassesAttribute : Attribute
 {
     public Type[] DerivedTypes { get; private set; }
@@ -11,7 +11,7 @@ public class HasDerivedClassesAttribute : Attribute
     }
 }
 
-[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, Inherited = false)]
 public class IsDerivedClassAttribute : Attribute
 {
     public string Identifier { get; private set; }

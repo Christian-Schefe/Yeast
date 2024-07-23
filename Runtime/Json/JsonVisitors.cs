@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 using Yeast.Memento;
 using Yeast.Utils;
 
@@ -87,12 +89,12 @@ namespace Yeast.Json
 
         public void Visit(JsonArray json)
         {
-            throw new System.InvalidOperationException("Cannot convert JsonArray to StringMemento");
+            throw new InvalidOperationException("Cannot convert JsonArray to StringMemento");
         }
 
         public void Visit(JsonObject json)
         {
-            throw new System.InvalidOperationException("Cannot convert JsonObject to StringMemento");
+            throw new InvalidOperationException("Cannot convert JsonObject to StringMemento");
         }
 
         public void Visit(JsonNull json)
@@ -127,17 +129,17 @@ namespace Yeast.Json
 
         public void Visit(JsonArray json)
         {
-            throw new System.InvalidOperationException("Cannot convert JsonArray to StringMemento");
+            throw new InvalidOperationException("Cannot convert JsonArray to StringMemento");
         }
 
         public void Visit(JsonObject json)
         {
-            throw new System.InvalidOperationException("Cannot convert JsonObject to StringMemento");
+            throw new InvalidOperationException("Cannot convert JsonObject to StringMemento");
         }
 
         public void Visit(JsonNull json)
         {
-            throw new System.InvalidOperationException("Cannot convert JsonNull to IntegerMemento");
+            throw new InvalidOperationException("Cannot convert JsonNull to IntegerMemento");
         }
     }
 
@@ -167,17 +169,17 @@ namespace Yeast.Json
 
         public void Visit(JsonArray json)
         {
-            throw new System.InvalidOperationException("Cannot convert JsonArray to StringMemento");
+            throw new InvalidOperationException("Cannot convert JsonArray to StringMemento");
         }
 
         public void Visit(JsonObject json)
         {
-            throw new System.InvalidOperationException("Cannot convert JsonObject to StringMemento");
+            throw new InvalidOperationException("Cannot convert JsonObject to StringMemento");
         }
 
         public void Visit(JsonNull json)
         {
-            throw new System.InvalidOperationException("Cannot convert JsonNull to DecimalMemento");
+            throw new InvalidOperationException("Cannot convert JsonNull to DecimalMemento");
         }
     }
 
@@ -196,7 +198,7 @@ namespace Yeast.Json
             {
                 "true" => new BoolMemento(true),
                 "false" => new BoolMemento(false),
-                _ => throw new System.InvalidOperationException("Cannot convert JsonString to BoolMemento")
+                _ => throw new InvalidOperationException("Cannot convert JsonString to BoolMemento")
             };
         }
 
@@ -212,17 +214,130 @@ namespace Yeast.Json
 
         public void Visit(JsonArray json)
         {
-            throw new System.InvalidOperationException("Cannot convert JsonArray to StringMemento");
+            throw new InvalidOperationException("Cannot convert JsonArray to StringMemento");
         }
 
         public void Visit(JsonObject json)
         {
-            throw new System.InvalidOperationException("Cannot convert JsonObject to StringMemento");
+            throw new InvalidOperationException("Cannot convert JsonObject to StringMemento");
         }
 
         public void Visit(JsonNull json)
         {
-            throw new System.InvalidOperationException("Cannot convert JsonNull to BoolMemento");
+            throw new InvalidOperationException("Cannot convert JsonNull to BoolMemento");
+        }
+    }
+
+    public class JsonTypeWrapperVisitor : TypeWrapperVisitor<JsonValue, IMemento>
+    {
+        public override void Visit(StringTypeWrapper stringTypeWrapper)
+        {
+            var visitor = new ToStringMementoJsonVisitor();
+            value.Accept(visitor);
+            result = visitor.GetResult();
+        }
+
+        public override void Visit(BoolTypeWrapper boolTypeWrapper)
+        {
+            if (value is JsonNull && boolTypeWrapper.IsNullable)
+            {
+                result = new NullMemento();
+                return;
+            }
+            var visitor = new ToBoolMementoJsonVisitor();
+            value.Accept(visitor);
+            result = visitor.GetResult();
+        }
+
+        public override void Visit(IntegerTypeWrapper integerTypeWrapper)
+        {
+            if (value is JsonNull && integerTypeWrapper.IsNullable)
+            {
+                result = new NullMemento();
+                return;
+            }
+            var visitor = new ToIntegerMementoJsonVisitor();
+            value.Accept(visitor);
+            result = visitor.GetResult();
+        }
+
+        public override void Visit(RationalTypeWrapper rationalTypeWrapper)
+        {
+            if (value is JsonNull && rationalTypeWrapper.IsNullable)
+            {
+                result = new NullMemento();
+                return;
+            }
+            var visitor = new ToDecimalMementoJsonVisitor();
+            value.Accept(visitor);
+            result = visitor.GetResult();
+        }
+
+        public override void Visit(CollectionTypeWrapper collectionTypeWrapper)
+        {
+            if (value is JsonNull)
+            {
+                result = new NullMemento();
+                return;
+            }
+
+            void ConvertArray(JsonValue val, int rank)
+            {
+                if (val is not JsonArray jsonArray)
+                {
+                    throw new InvalidOperationException($"Cannot convert {val.GetType().Name} to ArrayMemento");
+                }
+
+                List<IMemento> list = new();
+
+                foreach (var item in jsonArray.value)
+                {
+                    if (rank == 1) Convert(item, collectionTypeWrapper.ElementType);
+                    else ConvertArray(item, rank - 1);
+                    list.Add(result);
+                }
+
+                result = new ArrayMemento(list);
+            }
+
+            ConvertArray(value, collectionTypeWrapper.Rank);
+        }
+
+        public override void Visit(StructTypeWrapper structTypeWrapper)
+        {
+            if (value is JsonNull)
+            {
+                result = new NullMemento();
+                return;
+            }
+            if (value is not JsonObject jsonObject)
+            {
+                throw new InvalidOperationException($"Cannot convert {value.GetType().Name} to DictMemento");
+            }
+
+            StructTypeWrapper typeWrapper = structTypeWrapper;
+
+            var obj = new Dictionary<string, IMemento>();
+
+            if (jsonObject.value.TryGetValue("$type", out var typeValue))
+            {
+                var typeIdentifier = typeValue.AsString();
+                if (structTypeWrapper.DerivedTypes.ContainsKey(typeIdentifier))
+                {
+                    typeWrapper = structTypeWrapper.DerivedTypes[typeIdentifier];
+                }
+                obj.Add("$type", new StringMemento(typeIdentifier));
+            }
+
+            foreach (var pair in jsonObject.value)
+            {
+                if (pair.Key == "$type") continue;
+
+                var res = Convert(pair.Value, typeWrapper.Fields[pair.Key].type);
+                obj.Add(pair.Key, res);
+            }
+
+            result = new DictMemento(obj);
         }
     }
 }

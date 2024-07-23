@@ -17,11 +17,13 @@ namespace Yeast.Memento
                 }
                 return new NullMemento();
             }
+            type = ICustomTransformer.GetDeserializationType(type);
+            type = Nullable.GetUnderlyingType(type) ?? type;
+            return ConvertInternal(xmlElement, type);
+        }
 
-            Type underlyingType = Nullable.GetUnderlyingType(type);
-            bool isNullableValueType = underlyingType != null;
-            if (isNullableValueType) type = underlyingType;
-
+        public IMemento ConvertInternal(XmlElement xmlElement, Type type)
+        {
             if (type == typeof(string))
             {
                 if (xmlElement.children.Count == 0) return new StringMemento("");
@@ -33,13 +35,12 @@ namespace Yeast.Memento
             }
             else if (type == typeof(bool))
             {
-                if (xmlElement.children.Count != 1 || xmlElement.children[0] is not XmlString str)
-                    throw new InvalidOperationException("Cannot convert XmlElement to BoolMemento");
+                if (xmlElement.children.Count != 1) throw new InvalidOperationException("Cannot convert XmlElement to BoolMemento");
                 var visitor = new ToBoolMementoXmlVisitor();
                 xmlElement.children[0].Accept(visitor);
                 return visitor.GetResult();
             }
-            else if (TypeUtils.IsIntegerNumber(type) || type.IsEnum)
+            else if (TypeUtils.IsIntegerNumber(type) || type.IsEnum || type == typeof(char))
             {
                 if (xmlElement.children.Count != 1) throw new InvalidOperationException("Cannot convert XmlElement to IntegerMemento");
                 var visitor = new ToIntegerMementoXmlVisitor();
@@ -93,7 +94,6 @@ namespace Yeast.Memento
                     {
                         type = derivedType;
                     }
-                    else throw new InvalidOperationException($"Cannot find derived type {typeIdentifier} for {type}");
                     obj.Add("$type", new StringMemento(typeIdentifier));
                 }
 

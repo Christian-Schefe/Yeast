@@ -114,6 +114,10 @@ namespace Yeast.Xml
                 {
                     Visit(str);
                 }
+                else if ((name == "character" || name == "char") && xml.children[0] is XmlString ch && ch.value.Length == 1)
+                {
+                    result = new IntegerMemento(ch.value[0]);
+                }
                 else
                 {
                     throw new System.InvalidOperationException("Cannot convert XmlElement to IntegerMemento");

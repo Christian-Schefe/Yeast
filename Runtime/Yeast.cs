@@ -22,9 +22,19 @@ namespace Yeast
             return JSON.Parse<T>(json);
         }
 
+        public static object FromJson(Type type, string json)
+        {
+            return JSON.Parse(type, json);
+        }
+
         public static bool TryFromJson<T>(string json, out T obj)
         {
             return JSON.TryParse(json, out obj);
+        }
+
+        public static bool TryFromJson(Type type, string json, out object obj)
+        {
+            return JSON.TryParse(type, json, out obj);
         }
 
         public static byte[] ToBytes(object obj)
@@ -42,9 +52,19 @@ namespace Yeast
             return BINARY.Deserialize<T>(bytes);
         }
 
+        public static object FromBytes(Type type, byte[] bytes)
+        {
+            return BINARY.Deserialize(type, bytes);
+        }
+
         public static bool TryFromBytes<T>(byte[] bytes, out T obj)
         {
             return BINARY.TryDeserialize(bytes, out obj);
+        }
+
+        public static bool TryFromBytes(Type type, byte[] bytes, out object obj)
+        {
+            return BINARY.TryDeserialize(type, bytes, out obj);
         }
 
         public static string ToBase64(object obj)
@@ -68,6 +88,11 @@ namespace Yeast
             return FromBytes<T>(Convert.FromBase64String(base64));
         }
 
+        public static object FromBase64(Type type, string base64)
+        {
+            return FromBytes(type, Convert.FromBase64String(base64));
+        }
+
         public static bool TryFromBase64<T>(string base64, out T obj)
         {
             byte[] bytes;
@@ -81,6 +106,21 @@ namespace Yeast
                 return false;
             }
             return TryFromBytes(bytes, out obj);
+        }
+
+        public static bool TryFromBase64(Type type, string base64, out object obj)
+        {
+            byte[] bytes;
+            try
+            {
+                bytes = Convert.FromBase64String(base64);
+            }
+            catch
+            {
+                obj = default;
+                return false;
+            }
+            return TryFromBytes(type, bytes, out obj);
         }
 
         public static string ToXml(object obj)
@@ -98,9 +138,19 @@ namespace Yeast
             return XML.Deserialize<T>(xml);
         }
 
+        public static object FromXml(Type type, string xml)
+        {
+            return XML.Deserialize(type, xml);
+        }
+
         public static bool TryFromXml<T>(string xml, out T obj)
         {
             return XML.TryDeserialize(xml, out obj);
+        }
+
+        public static bool TryFromXml(Type type, string xml, out object obj)
+        {
+            return XML.TryDeserialize(type, xml, out obj);
         }
     }
 }

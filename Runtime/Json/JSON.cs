@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Yeast.Memento;
 
 namespace Yeast.Json
@@ -11,10 +12,14 @@ namespace Yeast.Json
         private static readonly JSON instance = new();
 
         private readonly MementoConverter mementoConverter;
+        private readonly ToJsonMementoVisitor visitor;
+        private readonly JsonTypeWrapperVisitor typeVisitor;
 
         private JSON()
         {
             mementoConverter = new();
+            visitor = new();
+            typeVisitor = new();
         }
 
         /// <summary>
@@ -23,9 +28,8 @@ namespace Yeast.Json
         public static string Stringify(object value)
         {
             var memento = instance.mementoConverter.Serialize(value);
-            var mementoVisitor = new ToJsonMementoVisitor();
-            memento.Accept(mementoVisitor);
-            return mementoVisitor.GetResult().ToString();
+            memento.Accept(instance.visitor);
+            return instance.visitor.GetResult().ToString();
         }
 
         /// <summary>
@@ -76,8 +80,8 @@ namespace Yeast.Json
         public static object Parse(Type type, string text)
         {
             var jsonValue = JsonValue.FromString(text);
-            var translator = new JsonToMementoTranslator();
-            var memento = translator.Convert(jsonValue, type);
+            var memento = instance.typeVisitor.Convert(jsonValue, TypeWrapper.FromType(type));
+            UnityEngine.Debug.Log(memento);
             return instance.mementoConverter.Deserialize(type, memento);
         }
 

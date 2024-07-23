@@ -5,6 +5,73 @@ using Yeast.Utils;
 
 namespace Yeast.Memento
 {
+    public interface ICustomTransformer
+    {
+        object Serialize(object value);
+        object Deserialize(object memento);
+
+        public static Dictionary<Type, (Type, ICustomTransformer)> customTransformations = new()
+        {
+            { typeof(Guid), (typeof(string), new CustomTransformer<Guid, string>(g => g.ToString(), (s) => new Guid(s)) )},
+            { typeof(DateTime), (typeof(long), new CustomTransformer<DateTime, long>(d => d.Ticks, l => new DateTime(l)) )},
+            { typeof(TimeSpan), (typeof(long), new CustomTransformer<TimeSpan, long>(t => t.Ticks, l => new TimeSpan(l)) )},
+            { typeof(Uri), (typeof(string), new CustomTransformer<Uri, string>(u => u.ToString(), s => new Uri(s)) )},
+            { typeof(Type), (typeof(string), new CustomTransformer<Type, string>(t => t.AssemblyQualifiedName, s => Type.GetType(s)) )},
+        };
+
+        public static (Type, object) SerializeTransform(Type type, object obj)
+        {
+            if (customTransformations.TryGetValue(type, out (Type type, ICustomTransformer transformer) e))
+            {
+                return (e.type, e.transformer.Serialize(obj));
+            }
+            return (type, obj);
+        }
+
+        public static (Type, Func<object, object>) DeserializeTransformer(Type type)
+        {
+            if (customTransformations.TryGetValue(type, out (Type type, ICustomTransformer transformer) e))
+            {
+                return (e.type, obj => e.transformer.Deserialize(obj));
+            }
+            return (type, e => e);
+        }
+
+        public static Type GetDeserializationType(Type type)
+        {
+            if (customTransformations.TryGetValue(type, out (Type type, ICustomTransformer transformer) e))
+            {
+                return e.type;
+            }
+            return type;
+        }
+    }
+
+    public class CustomTransformer<TFrom, TTo> : ICustomTransformer
+    {
+        public delegate TTo SerializeDelegate(TFrom value);
+        public delegate TFrom DeserializeDelegate(TTo memento);
+
+        private readonly SerializeDelegate serializer;
+        private readonly DeserializeDelegate deserializer;
+
+        public CustomTransformer(SerializeDelegate serializer, DeserializeDelegate deserializer)
+        {
+            this.serializer = serializer;
+            this.deserializer = deserializer;
+        }
+
+        public object Serialize(object value)
+        {
+            return serializer((TFrom)value);
+        }
+
+        public object Deserialize(object memento)
+        {
+            return deserializer((TTo)memento);
+        }
+    }
+
     public class MementoConversionException : Exception
     {
         public MementoConversionException(string message) : base(message) { }
@@ -39,6 +106,8 @@ namespace Yeast.Memento
                 return new NullMemento();
             }
             Type type = value.GetType();
+
+            (type, value) = ICustomTransformer.SerializeTransform(type, value);
 
             if (type.IsSubclassOf(typeof(UnityEngine.Object)))
             {
@@ -101,9 +170,9 @@ namespace Yeast.Memento
 
         public object Deserialize(Type type, IMemento memento)
         {
+            var (newType, transformer) = ICustomTransformer.DeserializeTransformer(type);
             var visitor = new DeserializationMementoVisitor(this);
-            visitor.Visit(memento, type);
-            return visitor.result;
+            return transformer(visitor.Deserialize(memento, newType));
         }
 
         public class DeserializationMementoVisitor : IMementoVisitor
@@ -118,10 +187,11 @@ namespace Yeast.Memento
                 this.converter = converter;
             }
 
-            public void Visit(IMemento memento, Type type)
+            public object Deserialize(IMemento memento, Type type)
             {
                 this.type = type;
                 memento.Accept(this);
+                return result;
             }
 
             public void Visit(NullMemento memento)
@@ -148,7 +218,7 @@ namespace Yeast.Memento
                 {
                     result = memento.value;
                 }
-                else if (TypeUtils.IsIntegerNumber(type) || TypeUtils.IsRationalNumber(type))
+                else if (TypeUtils.IsIntegerNumber(type) || TypeUtils.IsRationalNumber(type) || type == typeof(char))
                 {
                     result = Convert.ChangeType(memento.value, type);
                 }
@@ -238,13 +308,8 @@ namespace Yeast.Memento
                         throw new TypeMismatchException("Failed to convert map to " + type.Name + ": type is not instantiateable and there is no type ID");
                     }
 
-                    if (typeID != null)
+                    if (typeID != null && TypeUtils.HasAttribute(type, out HasDerivedClassesAttribute attr))
                     {
-                        bool hasDerivedClassAttribute = TypeUtils.HasAttribute(type, out HasDerivedClassesAttribute attr);
-                        if (!hasDerivedClassAttribute)
-                        {
-                            throw new TypeMismatchException("Failed to convert map to " + type.Name + ": type does not have a HasDerivedClassesAttribute");
-                        }
                         Type derivedType = null;
                         foreach (var t in attr.DerivedTypes)
                         {
@@ -264,7 +329,7 @@ namespace Yeast.Memento
                             throw new TypeMismatchException("Failed to convert map to " + type.Name + $": {derivedType.Name} is not a derived type");
                         }
                         memento.value.Remove("$type");
-                        Visit(new DictMemento(memento.value), derivedType);
+                        result = converter.Deserialize(derivedType, memento);
                     }
                     else
                     {
@@ -286,8 +351,9 @@ namespace Yeast.Memento
                                 object fieldValueObject = converter.Deserialize(field.FieldType, fieldValue);
                                 field.SetValue(instance, fieldValueObject);
                             }
-                            catch (TypeMismatchException)
+                            catch (TypeMismatchException e)
                             {
+                                UnityEngine.Debug.Log(e);
                                 field.SetValue(instance, TypeUtils.DefaultValue(type));
                                 continue;
                             }

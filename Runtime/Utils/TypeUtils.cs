@@ -91,6 +91,13 @@ namespace Yeast.Utils
             return type.IsClass || Nullable.GetUnderlyingType(type) != null;
         }
 
+        public static bool IsNullable(Type type, out Type baseType)
+        {
+            var underlyingType = Nullable.GetUnderlyingType(type);
+            baseType = underlyingType ?? type;
+            return type.IsClass || underlyingType != null;
+        }
+
         public static bool IsStruct(Type type)
         {
             return type.IsValueType && !type.IsPrimitive && !type.IsEnum;
@@ -150,7 +157,7 @@ namespace Yeast.Utils
 
         public static bool HasAttribute<T>(Type type, out T attribute) where T : Attribute
         {
-            var attrs = type.GetCustomAttribute(typeof(T));
+            var attrs = type.GetCustomAttribute(typeof(T), false);
             if (attrs != null)
             {
                 attribute = (T)attrs;

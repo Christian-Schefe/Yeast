@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -23,7 +24,7 @@ namespace Yeast.Test
 
         public static List<string> GetStringData()
         {
-            return new List<string> { "", " ", "Hello, World!", "This is a multiline\nstring!", "This\nString\tcontains\0\r\a\b\vmany special characters\u0010 like #'+~*-_.:,;µ<>|@€!\"§$%&/()=?`´^°ê&amp;&&gt;" };
+            return new List<string> { null, "", " ", "Hello, World!", "This is a multiline\nstring!", "This\nString\tcontains\0\r\a\b\vmany special characters\u0010 like #'+~*-_.:,;µ<>|@€!\"§$%&/()=?`´^°ê&amp;&&gt;" };
         }
 
         public static List<bool> GetBoolData()
@@ -39,6 +40,7 @@ namespace Yeast.Test
                 new int[] { },
                 new int[] { 0 },
                 new int[] { 0, 1 },
+                null,
             };
         }
 
@@ -50,6 +52,7 @@ namespace Yeast.Test
                 new int[,,] { { } },
                 new int[,,] { { { } } },
                 new int[,,] { { { 1, 2, 3 }, { 4, 5, 6 }, { 7, 8, 9 }, { 10, 11, 12 } }, { { -1, -2, -3 }, { -4, -5, -6 }, { -7, -8, -9 }, { -10, -11, -12 } } },
+                null,
             };
         }
 
@@ -66,6 +69,7 @@ namespace Yeast.Test
                 new int[,,][,] { { { } }, { { } }, { { } } },
                 new int[,,][,] { { { null, null } }, { { null, null } }, { { null, null } } },
                 new int[,,][,] { { { i1, i2, i1 }, { i1, i2, i1 } }, { { i2, i2, i1 }, { i2, i2, i2 } }, { { i1, i2, i1 }, { i1, i2, i1 } }, { { i2, i2, i1 }, { i2, i2, i2 } }},
+                null
             };
         }
 
@@ -78,6 +82,7 @@ namespace Yeast.Test
                 new List<int> { 0 },
                 new List<int> { 0, 1 },
                 new List<int> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 },
+                null,
             };
         }
 
@@ -87,6 +92,7 @@ namespace Yeast.Test
             {
                 new() { },
                 new() { { "a", 1 }, { "b", 2 }, { "c", 3 } },
+                null,
             };
         }
 
@@ -96,6 +102,7 @@ namespace Yeast.Test
             {
                 new() { },
                 new() { "a", "b", "c" },
+                null,
             };
         }
 
@@ -110,12 +117,29 @@ namespace Yeast.Test
             {
                 new("School 1", new() { new Student("Alice", 20, 1.7f, 12135), new Student("Bob", 21, 1.8f ,42342), new Student("Charlie", 22, 1.9f, 73544) }, people),
                 new("School 2", new() { new Student("Alice", 20, 1.7f, 12135), new Student("Bob", 21, 1.8f ,42342), new Student("Charlie", 22, 1.9f, 73544) }, null),
+                null
             };
         }
 
         public static List<Vector2> GetVector2Data()
         {
             return new List<Vector2> { Vector2.zero, Vector2.one, new(1f, 2f), new(-1f, -2f), new(1e20f, 1e20f), new(-1e20f, -1e20f), new(1234567.89f, 1234567.89f), new(-1234567.89f, -1234567.89f) };
+        }
+
+        public static List<(Type, object)> GetVariousData()
+        {
+
+            return new()
+            {
+                (typeof(int), 0),
+                (typeof(string), null),
+                (typeof(Vector3Int), new Vector3Int(1, 2, 3)),
+                (typeof(DateTime), new DateTime(2021, 1, 1, 0, 0, 0, DateTimeKind.Utc)),
+                (typeof(DateTimeOffset), new DateTimeOffset(2021, 1, 1, 0, 0, 0, TimeSpan.Zero)),
+                (typeof(TimeSpan), new TimeSpan(1, 2, 3, 4, 5)),
+                (typeof(Guid), Guid.NewGuid()),
+                (typeof(char), 'ß'),
+            };
         }
     }
 }
