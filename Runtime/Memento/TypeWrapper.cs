@@ -14,6 +14,8 @@ namespace Yeast.Memento
 
     public abstract class TypeWrapper : ITypeWrapper
     {
+        private static readonly Dictionary<Type, TypeWrapper> typeWrappers = new();
+
         protected Type type;
         protected bool isNullable;
 
@@ -30,15 +32,23 @@ namespace Yeast.Memento
 
         public static TypeWrapper FromType(Type type)
         {
+            if (typeWrappers.TryGetValue(type, out var wrapper)) return wrapper;
+
             bool isNullable = TypeUtils.IsNullable(type, out var baseType);
 
-            if (StringTypeWrapper.Matches(baseType)) return new StringTypeWrapper(baseType);
-            else if (BoolTypeWrapper.Matches(baseType)) return new BoolTypeWrapper(baseType, isNullable);
-            else if (IntegerTypeWrapper.Matches(baseType)) return new IntegerTypeWrapper(baseType, isNullable);
-            else if (RationalTypeWrapper.Matches(baseType)) return new RationalTypeWrapper(baseType, isNullable);
-            else if (CollectionTypeWrapper.Matches(baseType)) return new CollectionTypeWrapper(baseType);
-            else if (StructTypeWrapper.Matches(baseType)) return new StructTypeWrapper(baseType, isNullable);
+            TypeWrapper result;
+
+            if (StringTypeWrapper.Matches(baseType)) result = new StringTypeWrapper(baseType);
+            else if (BoolTypeWrapper.Matches(baseType)) result = new BoolTypeWrapper(baseType, isNullable);
+            else if (IntegerTypeWrapper.Matches(baseType)) result = new IntegerTypeWrapper(baseType, isNullable);
+            else if (RationalTypeWrapper.Matches(baseType)) result = new RationalTypeWrapper(baseType, isNullable);
+            else if (RuntimeTypeTypeWrapper.Matches(baseType)) result = new RuntimeTypeTypeWrapper(baseType);
+            else if (CollectionTypeWrapper.Matches(baseType)) result = new CollectionTypeWrapper(baseType);
+            else if (StructTypeWrapper.Matches(baseType)) result = new StructTypeWrapper(baseType, isNullable);
             else throw new InvalidOperationException($"Cannot create TypeWrapper from type {baseType}");
+
+            typeWrappers.Add(type, result);
+            return result;
         }
     }
 
@@ -78,8 +88,13 @@ namespace Yeast.Memento
 
     public class IntegerTypeWrapper : TypeWrapper
     {
+        private bool isEnum;
+
+        public bool IsEnum => isEnum;
+
         public IntegerTypeWrapper(Type type, bool isNullable) : base(type, isNullable)
         {
+            isEnum = type.IsEnum;
         }
 
         public override void Accept(ITypeWrapperVisitor visitor)
@@ -114,9 +129,11 @@ namespace Yeast.Memento
     {
         private readonly int rank;
         private readonly TypeWrapper elementType;
+        private readonly bool isCollection;
 
         public int Rank => rank;
         public TypeWrapper ElementType => elementType;
+        public bool IsCollection => isCollection;
 
         public CollectionTypeWrapper(Type type) : base(type, true)
         {
@@ -124,11 +141,13 @@ namespace Yeast.Memento
             {
                 rank = 1;
                 elementType = FromType(elType);
+                isCollection = !type.IsArray;
             }
             else
             {
                 rank = type.GetArrayRank();
                 elementType = FromType(type.GetElementType());
+                isCollection = false;
             }
         }
 
@@ -148,13 +167,17 @@ namespace Yeast.Memento
         private readonly string typeIdentifier;
         private readonly Dictionary<string, StructTypeWrapper> derivedTypes;
         private readonly Dictionary<string, Field> fields;
+        private readonly bool isInstantiable;
 
         public string TypeIdentifier => typeIdentifier;
         public Dictionary<string, StructTypeWrapper> DerivedTypes => derivedTypes;
         public Dictionary<string, Field> Fields => fields;
+        public bool IsInstantiable => isInstantiable;
 
         public StructTypeWrapper(Type type, bool isNullable) : base(type, isNullable)
         {
+            isInstantiable = TypeUtils.IsInstantiable(type);
+
             if (TypeUtils.HasAttribute(type, out IsDerivedClassAttribute attr))
             {
                 typeIdentifier = attr.Identifier;
@@ -166,6 +189,8 @@ namespace Yeast.Memento
             {
                 foreach (var derivedType in derivedAttr.DerivedTypes)
                 {
+                    if (!type.IsAssignableFrom(derivedType)) throw new InvalidOperationException($"Type {derivedType} is not derived from {type}");
+
                     if (TypeUtils.HasAttribute(derivedType, out IsDerivedClassAttribute derivedClassAttr))
                     {
                         derivedTypes.Add(derivedClassAttr.Identifier, (StructTypeWrapper)FromType(derivedType));
@@ -183,6 +208,7 @@ namespace Yeast.Memento
                 fields.Add(field.Name, new Field
                 {
                     setter = (obj, val) => field.SetValue(obj, val),
+                    getter = obj => field.GetValue(obj),
                     type = fieldTypeWrapper,
                     name = field.Name
                 });
@@ -202,8 +228,26 @@ namespace Yeast.Memento
         public struct Field
         {
             public Action<object, object> setter;
+            public Func<object, object> getter;
             public TypeWrapper type;
             public string name;
+        }
+    }
+
+    public class RuntimeTypeTypeWrapper : TypeWrapper
+    {
+        public RuntimeTypeTypeWrapper(Type type) : base(type, false)
+        {
+        }
+
+        public override void Accept(ITypeWrapperVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
+
+        public static bool Matches(Type type)
+        {
+            return typeof(Type).IsAssignableFrom(type);
         }
     }
 
@@ -215,6 +259,7 @@ namespace Yeast.Memento
         void Visit(RationalTypeWrapper rationalTypeWrapper);
         void Visit(CollectionTypeWrapper collectionTypeWrapper);
         void Visit(StructTypeWrapper structTypeWrapper);
+        void Visit(RuntimeTypeTypeWrapper runtimeTypeTypeWrapper);
     }
 
     public abstract class TypeWrapperVisitor<TIn, TOut> : ITypeWrapperVisitor
@@ -224,11 +269,13 @@ namespace Yeast.Memento
 
         public TOut Convert(TIn value, TypeWrapper type)
         {
+            var oldVal = this.value;
             var customType = ICustomTransformer.GetDeserializationType(type.Type);
             type = TypeWrapper.FromType(customType);
 
             this.value = value;
             type.Accept(this);
+            this.value = oldVal;
             return result;
         }
 
@@ -238,5 +285,6 @@ namespace Yeast.Memento
         public abstract void Visit(RationalTypeWrapper rationalTypeWrapper);
         public abstract void Visit(CollectionTypeWrapper collectionTypeWrapper);
         public abstract void Visit(StructTypeWrapper structTypeWrapper);
+        public abstract void Visit(RuntimeTypeTypeWrapper runtimeTypeTypeWrapper);
     }
 }

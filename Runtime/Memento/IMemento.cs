@@ -9,6 +9,7 @@ namespace Yeast.Memento
         public MementoType MementoType { get; }
         public void Accept(IMementoVisitor visitor);
         public bool ValueEquals(IMemento other);
+        public object GetValueAsObject();
     }
 
     public enum MementoType : byte
@@ -42,6 +43,8 @@ namespace Yeast.Memento
         {
             visitor.Visit(this);
         }
+
+        public object GetValueAsObject() => null;
     }
 
     public class StringMemento : IMemento
@@ -69,6 +72,8 @@ namespace Yeast.Memento
         {
             visitor.Visit(this);
         }
+
+        public object GetValueAsObject() => value;
     }
 
     public class IntegerMemento : IMemento
@@ -97,6 +102,8 @@ namespace Yeast.Memento
         {
             visitor.Visit(this);
         }
+
+        public object GetValueAsObject() => value;
     }
 
     public class DecimalMemento : IMemento
@@ -130,6 +137,8 @@ namespace Yeast.Memento
         {
             visitor.Visit(this);
         }
+
+        public object GetValueAsObject() => value;
     }
 
     public class BoolMemento : IMemento
@@ -162,6 +171,8 @@ namespace Yeast.Memento
         {
             visitor.Visit(this);
         }
+
+        public object GetValueAsObject() => value;
     }
 
     public class ArrayMemento : IMemento
@@ -203,6 +214,13 @@ namespace Yeast.Memento
         {
             visitor.Visit(this);
         }
+
+        public object GetValueAsObject()
+        {
+            var list = new List<object>();
+            foreach (var val in value) list.Add(val.GetValueAsObject());
+            return list;
+        }
     }
 
     public class DictMemento : IMemento
@@ -238,6 +256,13 @@ namespace Yeast.Memento
         public void Accept(IMementoVisitor visitor)
         {
             visitor.Visit(this);
+        }
+
+        public object GetValueAsObject()
+        {
+            var dict = new Dictionary<string, object>();
+            foreach (var pair in value) dict[pair.Key] = pair.Value.GetValueAsObject();
+            return dict;
         }
     }
 

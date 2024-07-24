@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -139,6 +138,7 @@ namespace Yeast.Test
                 (typeof(TimeSpan), new TimeSpan(1, 2, 3, 4, 5)),
                 (typeof(Guid), Guid.NewGuid()),
                 (typeof(char), 'ß'),
+                (typeof(Type), typeof(School)),
             };
         }
     }

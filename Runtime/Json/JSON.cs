@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Yeast.Memento;
 
 namespace Yeast.Json
@@ -81,7 +80,6 @@ namespace Yeast.Json
         {
             var jsonValue = JsonValue.FromString(text);
             var memento = instance.typeVisitor.Convert(jsonValue, TypeWrapper.FromType(type));
-            UnityEngine.Debug.Log(memento);
             return instance.mementoConverter.Deserialize(type, memento);
         }
 

@@ -14,14 +14,14 @@ namespace Yeast.Utils
         private static IMemento ArrayToMementoRecursive(Func<object, IMemento> transformer, Array arr, int rank, int dimension, int[] indices)
         {
             int length = arr.GetLength(dimension);
-            IMemento[] ionValueArr = new IMemento[length];
+            IMemento[] mementoArray = new IMemento[length];
 
             if (dimension == rank - 1)
             {
                 for (int i = 0; i < length; i++)
                 {
                     indices[dimension] = i;
-                    ionValueArr[i] = transformer(arr.GetValue(indices));
+                    mementoArray[i] = transformer(arr.GetValue(indices));
                 }
             }
             else
@@ -31,10 +31,10 @@ namespace Yeast.Utils
                     indices[dimension] = i;
 
                     IMemento subArray = ArrayToMementoRecursive(transformer, arr, rank, dimension + 1, indices);
-                    ionValueArr[i] = subArray;
+                    mementoArray[i] = subArray;
                 }
             }
-            return new ArrayMemento(ionValueArr);
+            return new ArrayMemento(mementoArray);
         }
 
         public static Array MementoToArray(Type elementType, Type arrayType, Func<IMemento, object> transformer, ArrayMemento ionValue)

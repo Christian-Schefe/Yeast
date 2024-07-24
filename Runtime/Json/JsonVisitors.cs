@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Security.Cryptography;
 using Yeast.Memento;
 using Yeast.Utils;
 
@@ -305,7 +304,7 @@ namespace Yeast.Json
 
         public override void Visit(StructTypeWrapper structTypeWrapper)
         {
-            if (value is JsonNull)
+            if (value is JsonNull && structTypeWrapper.IsNullable)
             {
                 result = new NullMemento();
                 return;
@@ -338,6 +337,15 @@ namespace Yeast.Json
             }
 
             result = new DictMemento(obj);
+        }
+
+        public override void Visit(RuntimeTypeTypeWrapper typeWrapper)
+        {
+            if (value is not JsonString jsonStr)
+            {
+                throw new InvalidOperationException($"Cannot convert {value.GetType().Name} to StringMemento");
+            }
+            result = new StringMemento(jsonStr.value);
         }
     }
 }

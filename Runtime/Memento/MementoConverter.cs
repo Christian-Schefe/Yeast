@@ -16,7 +16,6 @@ namespace Yeast.Memento
             { typeof(DateTime), (typeof(long), new CustomTransformer<DateTime, long>(d => d.Ticks, l => new DateTime(l)) )},
             { typeof(TimeSpan), (typeof(long), new CustomTransformer<TimeSpan, long>(t => t.Ticks, l => new TimeSpan(l)) )},
             { typeof(Uri), (typeof(string), new CustomTransformer<Uri, string>(u => u.ToString(), s => new Uri(s)) )},
-            { typeof(Type), (typeof(string), new CustomTransformer<Type, string>(t => t.AssemblyQualifiedName, s => Type.GetType(s)) )},
         };
 
         public static (Type, object) SerializeTransform(Type type, object obj)
@@ -91,278 +90,281 @@ namespace Yeast.Memento
     {
         public IMemento Serialize(object value)
         {
-            return Serialize(value, 0);
-        }
-
-        private IMemento Serialize(object value, int depth)
-        {
-            if (depth > 1000)
-            {
-                throw new CircularReferenceException("Recursion limit reached. Your object may contain circular references.");
-            }
-
-            if (value == null)
-            {
-                return new NullMemento();
-            }
-            Type type = value.GetType();
-
-            (type, value) = ICustomTransformer.SerializeTransform(type, value);
-
-            if (type.IsSubclassOf(typeof(UnityEngine.Object)))
-            {
-                throw new TypeMismatchException("Cannot stringify instances of UnityEngine.Object.");
-            }
-
-            if (value is bool boolValue)
-            {
-                return new BoolMemento(boolValue);
-            }
-            else if (value is string stringValue)
-            {
-                return new StringMemento(stringValue);
-            }
-            else if (TypeUtils.IsIntegerNumber(type) || type == typeof(char) || type.IsEnum)
-            {
-                long val = Convert.ToInt64(value);
-                return new IntegerMemento(val);
-            }
-            else if (TypeUtils.IsRationalNumber(type))
-            {
-                double val = Convert.ToDouble(value);
-                return new DecimalMemento(val);
-            }
-            else if (TypeUtils.IsCollection(type, out _))
-            {
-                IEnumerable collection = (IEnumerable)value;
-                var intermediateArray = new List<IMemento>();
-                foreach (var element in collection)
-                {
-                    var el = Serialize(element, depth + 1);
-                    intermediateArray.Add(el);
-                }
-                return new ArrayMemento(intermediateArray);
-            }
-            else if (type.IsArray) // must be multi-dimensional, as single-dimensional arrays implement ICollection<T>
-            {
-                Array array = (Array)value;
-                return ArrayUtils.ArrayToMemento(Serialize, array);
-            }
-            else
-            {
-                var intermediateMap = new Dictionary<string, IMemento>();
-                var fields = TypeUtils.GetFields(type);
-                foreach (var field in fields)
-                {
-                    var val = field.GetValue(value);
-                    var el = Serialize(val, depth + 1);
-                    intermediateMap.Add(field.Name, el);
-                }
-
-                if (TypeUtils.HasAttribute(type, out IsDerivedClassAttribute attr))
-                {
-                    intermediateMap.Add("$type", new StringMemento(attr.Identifier));
-                }
-
-                return new DictMemento(intermediateMap);
-            }
+            var visitor = new SerializationMementoVisitor(1000);
+            return visitor.Serialize(value);
         }
 
         public object Deserialize(Type type, IMemento memento)
         {
+            var visitor = new DeserializationMementoVisitor();
+            return visitor.Deserialize(type, memento);
+        }
+    }
+    public class DeserializationMementoVisitor : IMementoVisitor
+    {
+        private TypeWrapper type;
+        public object result;
+
+        public object Deserialize(Type type, IMemento memento)
+        {
+            if (type == typeof(object))
+            {
+                return memento.GetValueAsObject();
+            }
+
+            var oldType = this.type;
             var (newType, transformer) = ICustomTransformer.DeserializeTransformer(type);
-            var visitor = new DeserializationMementoVisitor(this);
-            return transformer(visitor.Deserialize(memento, newType));
+            this.type = TypeWrapper.FromType(newType);
+            memento.Accept(this);
+            this.type = oldType;
+            return transformer(result);
         }
 
-        public class DeserializationMementoVisitor : IMementoVisitor
+        public void Visit(NullMemento memento)
         {
-            private readonly MementoConverter converter;
-            private Type type;
-
-            public object result;
-
-            public DeserializationMementoVisitor(MementoConverter converter)
+            if (type.IsNullable)
             {
-                this.converter = converter;
+                result = null;
             }
+            else throw new TypeMismatchException("Failed to convert null to " + type.Type.Name + ": type not nullable");
+        }
 
-            public object Deserialize(IMemento memento, Type type)
+        public void Visit(StringMemento memento)
+        {
+            if (type is StringTypeWrapper)
             {
-                this.type = type;
-                memento.Accept(this);
-                return result;
+                result = memento.value;
             }
-
-            public void Visit(NullMemento memento)
+            else if (type is RuntimeTypeTypeWrapper)
             {
-                if (type.IsClass || Nullable.GetUnderlyingType(type) != null)
-                {
-                    result = null;
-                }
-                else throw new TypeMismatchException("Failed to convert null to " + type.Name + ": type not nullable");
+                result = Type.GetType(memento.value);
             }
+            else throw new TypeMismatchException("Failed to convert string to " + type.Type.Name);
+        }
 
-            public void Visit(StringMemento memento)
+        public void Visit(IntegerMemento memento)
+        {
+            if (type is IntegerTypeWrapper intType)
             {
-                if (type == typeof(string) || type == typeof(object))
+                if (intType.IsEnum)
                 {
-                    result = memento.value;
+                    result = Enum.ToObject(intType.Type, memento.value);
                 }
-                else throw new TypeMismatchException("Failed to convert string to " + type.Name);
+                else
+                {
+                    result = Convert.ChangeType(memento.value, intType.Type);
+                }
             }
+            else throw new TypeMismatchException("Failed to convert long to " + type.Type.Name);
+        }
 
-            public void Visit(IntegerMemento memento)
+        public void Visit(DecimalMemento memento)
+        {
+            if (type is RationalTypeWrapper ratType)
             {
-                if (type == typeof(object))
-                {
-                    result = memento.value;
-                }
-                else if (TypeUtils.IsIntegerNumber(type) || TypeUtils.IsRationalNumber(type) || type == typeof(char))
-                {
-                    result = Convert.ChangeType(memento.value, type);
-                }
-                else if (type.IsEnum)
-                {
-                    result = Enum.ToObject(type, memento.value);
-                }
-                else throw new TypeMismatchException("Failed to convert long to " + type.Name);
+                result = Convert.ChangeType(memento.value, ratType.Type);
             }
+            else throw new TypeMismatchException("Failed to convert double to " + type.Type.Name);
+        }
 
-            public void Visit(DecimalMemento memento)
+        public void Visit(BoolMemento memento)
+        {
+            if (type is BoolTypeWrapper)
             {
-                if (TypeUtils.IsIntegerNumber(type) || TypeUtils.IsRationalNumber(type))
-                {
-                    result = Convert.ChangeType(memento.value, type);
-                }
-                else if (type == typeof(object))
-                {
-                    result = memento.value;
-                }
-                else throw new TypeMismatchException("Failed to convert double to " + type.Name);
+                result = memento.value;
             }
+            else throw new TypeMismatchException("Failed to convert bool to " + type.Type.Name);
+        }
 
-            public void Visit(BoolMemento memento)
+        public void Visit(ArrayMemento memento)
+        {
+            if (type is CollectionTypeWrapper colType)
             {
-                if (type == typeof(bool) || type == typeof(object))
+                var elementType = colType.ElementType.Type;
+                if (colType.IsCollection)
                 {
-                    result = memento.value;
-                }
-                else throw new TypeMismatchException("Failed to convert bool to " + type.Name);
-            }
-
-            public void Visit(ArrayMemento memento)
-            {
-                if (type == typeof(object))
-                {
-                    var array = new object[memento.value.Length];
-                    for (int i = 0; i < memento.value.Length; i++)
+                    if (!TypeUtils.TryCreateInstance(colType.Type, out object instance))
                     {
-                        array[i] = converter.Deserialize(typeof(object), memento.value[i]);
+                        throw new TypeMismatchException("Failed to create instance of " + type.Type.Name);
                     }
-                    result = array;
-                }
-                else if (type.IsArray)
-                {
-                    var elementType = type.GetElementType();
-                    object Transform(IMemento val) => converter.Deserialize(elementType, val);
-
-                    var arr = ArrayUtils.MementoToArray(elementType, type, Transform, memento);
-                    result = arr;
-                }
-                else if (TypeUtils.IsCollection(type, out var elementType))
-                {
-                    if (!TypeUtils.TryCreateInstance(type, out object instance))
-                    {
-                        throw new TypeMismatchException("Failed to create instance of " + type.Name);
-                    }
-                    var wrapper = new CollectionWrapper(type, elementType, instance);
+                    var wrapper = new CollectionWrapper(elementType, instance);
                     foreach (var element in memento.value)
                     {
-                        var elementObject = converter.Deserialize(elementType, element);
+                        var elementObject = Deserialize(elementType, element);
                         wrapper.Add(elementObject);
                     }
                     result = wrapper.GetCollection();
                 }
-                else throw new TypeMismatchException("Failed to convert array to " + type.Name);
-            }
+                else
+                {
+                    object Transform(IMemento val) => Deserialize(elementType, val);
 
-            public void Visit(DictMemento memento)
+                    var arr = ArrayUtils.MementoToArray(elementType, colType.Type, Transform, memento);
+                    result = arr;
+                }
+            }
+            else throw new TypeMismatchException("Failed to convert array to " + type.Type.Name);
+        }
+
+        public void Visit(DictMemento memento)
+        {
+            if (type is StructTypeWrapper structType)
             {
-                if (type == typeof(object))
+                string typeID = memento.value.ContainsKey("$type") ? ((StringMemento)memento.value["$type"]).value : null;
+                memento.value.Remove("$type");
+
+                var usedType = (typeID != null && structType.DerivedTypes.TryGetValue(typeID, out var derivedType)) ? derivedType : structType;
+
+                if (!usedType.IsInstantiable)
                 {
-                    var instance = new Dictionary<string, object>();
-                    foreach (var pair in memento.value)
-                    {
-                        object pairValue = converter.Deserialize(typeof(object), pair.Value);
-                        instance.Add(pair.Key, pairValue);
-                    }
-                    result = instance;
+                    throw new TypeMismatchException("Failed to convert map to " + usedType.Type.Name + ": type is not instantiateable");
                 }
-                else if (type.IsClass || TypeUtils.IsStruct(type))
+
+                if (!TypeUtils.TryCreateInstance(usedType.Type, out object instance))
                 {
-                    string typeID = memento.value.ContainsKey("$type") ? ((StringMemento)memento.value["$type"]).value : null;
-
-                    if (!TypeUtils.IsInstantiateable(type) && typeID == null)
-                    {
-                        throw new TypeMismatchException("Failed to convert map to " + type.Name + ": type is not instantiateable and there is no type ID");
-                    }
-
-                    if (typeID != null && TypeUtils.HasAttribute(type, out HasDerivedClassesAttribute attr))
-                    {
-                        Type derivedType = null;
-                        foreach (var t in attr.DerivedTypes)
-                        {
-                            if (TypeUtils.HasAttribute(t, out IsDerivedClassAttribute derivedAttr) && derivedAttr.Identifier == typeID)
-                            {
-                                derivedType = t;
-                                break;
-                            }
-                        }
-
-                        if (derivedType is null)
-                        {
-                            throw new TypeMismatchException("Failed to convert map to " + type.Name + ": type ID does not match any derived class");
-                        }
-                        if (!type.IsAssignableFrom(derivedType))
-                        {
-                            throw new TypeMismatchException("Failed to convert map to " + type.Name + $": {derivedType.Name} is not a derived type");
-                        }
-                        memento.value.Remove("$type");
-                        result = converter.Deserialize(derivedType, memento);
-                    }
-                    else
-                    {
-                        if (!TypeUtils.TryCreateInstance(type, out object instance))
-                        {
-                            throw new TypeMismatchException("Failed to create instance of " + type.Name);
-                        }
-                        foreach (var field in TypeUtils.GetFields(type))
-                        {
-                            string fieldName = field.Name;
-                            if (!memento.value.TryGetValue(fieldName, out IMemento fieldValue))
-                            {
-                                field.SetValue(instance, TypeUtils.DefaultValue(type));
-                                continue;
-                            }
-
-                            try
-                            {
-                                object fieldValueObject = converter.Deserialize(field.FieldType, fieldValue);
-                                field.SetValue(instance, fieldValueObject);
-                            }
-                            catch (TypeMismatchException e)
-                            {
-                                UnityEngine.Debug.Log(e);
-                                field.SetValue(instance, TypeUtils.DefaultValue(type));
-                                continue;
-                            }
-                        }
-                        result = instance;
-                    }
+                    throw new TypeMismatchException("Failed to create instance of " + usedType.Type.Name);
                 }
-                else throw new TypeMismatchException("Failed to convert map to " + type.Name);
+                foreach (var (fieldName, field) in usedType.Fields)
+                {
+                    if (!memento.value.TryGetValue(fieldName, out IMemento fieldValue))
+                    {
+                        field.setter(instance, TypeUtils.DefaultValue(usedType.Type));
+                        continue;
+                    }
+
+                    object fieldValueObject = Deserialize(field.type.Type, fieldValue);
+                    field.setter(instance, fieldValueObject);
+                }
+                result = instance;
             }
+            else throw new TypeMismatchException("Failed to convert map to " + type.Type.Name);
+        }
+    }
+
+    public class SerializationMementoVisitor : ITypeWrapperVisitor
+    {
+        private object value;
+        private IMemento result;
+        private int depth;
+
+        public SerializationMementoVisitor(int maxDepth)
+        {
+            depth = maxDepth;
+        }
+
+        public IMemento Serialize(object value)
+        {
+            if (value is null)
+            {
+                return new NullMemento();
+            }
+
+            var oldValue = this.value;
+            this.value = value;
+
+            depth--;
+            if (depth < 0)
+            {
+                throw new CircularReferenceException("Recursion limit reached. Your object may contain circular references.");
+            }
+
+            var type = value is Type ? typeof(Type) : value.GetType();
+            (type, this.value) = ICustomTransformer.SerializeTransform(type, value);
+
+            var typeWrapper = TypeWrapper.FromType(type);
+            typeWrapper.Accept(this);
+
+            depth++;
+            this.value = oldValue;
+            return result;
+        }
+
+        public void Visit(StringTypeWrapper stringTypeWrapper)
+        {
+            result = new StringMemento((string)value);
+        }
+
+        public void Visit(BoolTypeWrapper boolTypeWrapper)
+        {
+            if (value is null && boolTypeWrapper.IsNullable)
+            {
+                result = new NullMemento();
+                return;
+            }
+            result = new BoolMemento((bool)value);
+        }
+
+        public void Visit(IntegerTypeWrapper integerTypeWrapper)
+        {
+            if (value is null && integerTypeWrapper.IsNullable)
+            {
+                result = new NullMemento();
+                return;
+            }
+            result = new IntegerMemento(Convert.ToInt64(value));
+        }
+
+        public void Visit(RationalTypeWrapper rationalTypeWrapper)
+        {
+            if (value is null && rationalTypeWrapper.IsNullable)
+            {
+                result = new NullMemento();
+                return;
+            }
+            result = new DecimalMemento(Convert.ToDouble(value));
+        }
+
+        public void Visit(CollectionTypeWrapper collectionTypeWrapper)
+        {
+            if (value is null)
+            {
+                result = new NullMemento();
+                return;
+            }
+
+            if (collectionTypeWrapper.IsCollection)
+            {
+                var intermediateArray = new List<IMemento>();
+                var collection = (IEnumerable)value;
+                foreach (var element in collection)
+                {
+                    var el = Serialize(element);
+                    intermediateArray.Add(el);
+                }
+                result = new ArrayMemento(intermediateArray);
+            }
+            else
+            {
+                result = ArrayUtils.ArrayToMemento(Serialize, (Array)value);
+            }
+        }
+
+        public void Visit(StructTypeWrapper structTypeWrapper)
+        {
+            if (value is null && structTypeWrapper.IsNullable)
+            {
+                result = new NullMemento();
+                return;
+            }
+
+            var obj = new Dictionary<string, IMemento>();
+
+            if (structTypeWrapper.TypeIdentifier is not null)
+            {
+                obj.Add("$type", new StringMemento(structTypeWrapper.TypeIdentifier));
+            }
+
+            foreach (var (fieldName, field) in structTypeWrapper.Fields)
+            {
+                obj.Add(fieldName, Serialize(field.getter(value)));
+            }
+
+            result = new DictMemento(obj);
+        }
+
+        public void Visit(RuntimeTypeTypeWrapper typeWrapper)
+        {
+            result = new StringMemento(((Type)value).AssemblyQualifiedName);
         }
     }
 }

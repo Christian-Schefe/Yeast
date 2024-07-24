@@ -6,17 +6,25 @@ namespace Yeast.Utils
 {
     public class CollectionWrapper
     {
-        private readonly Action<object> addMethod;
+        private static readonly Dictionary<Type, Action<object, object>> addDelegates = new();
+
+        private readonly Action<object, object> addMethod;
         private readonly object collection;
 
-        public CollectionWrapper(Type collectionType, Type elementType, object collection)
+        public CollectionWrapper(Type elementType, object collection)
         {
             this.collection = collection;
+            if (addDelegates.TryGetValue(elementType, out addMethod))
+            {
+                return;
+            }
+
             try
             {
                 var delegateCreator = typeof(CollectionWrapper).GetMethod(nameof(GetAddDelegate), BindingFlags.NonPublic | BindingFlags.Static);
-                var genericDelegateCreator = delegateCreator.MakeGenericMethod(collectionType, elementType);
-                addMethod = (Action<object>)genericDelegateCreator.Invoke(null, new object[] { collection });
+                var genericDelegateCreator = delegateCreator.MakeGenericMethod(elementType);
+                addMethod = (Action<object, object>)genericDelegateCreator.Invoke(null, new object[0]);
+                addDelegates.Add(elementType, addMethod);
             }
             catch (Exception e)
             {
@@ -24,14 +32,18 @@ namespace Yeast.Utils
             }
         }
 
-        private static Action<object> GetAddDelegate<T, K>(T collection) where T : ICollection<K>
+        private static Action<object, object> GetAddDelegate<T>()
         {
-            return e => collection.Add((K)e);
+            return (colObj, itemObj) =>
+            {
+                ICollection<T> col = (ICollection<T>)colObj;
+                col.Add((T)itemObj);
+            };
         }
 
         public void Add(object value)
         {
-            addMethod(value);
+            addMethod(collection, value);
         }
 
         public object GetCollection()

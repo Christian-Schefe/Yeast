@@ -8,7 +8,7 @@ namespace Yeast.Utils
 {
     public static class TypeUtils
     {
-        public static bool IsInstantiateable(Type type)
+        public static bool IsInstantiable(Type type)
         {
             if (type == null)
             {
