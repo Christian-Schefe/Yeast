@@ -109,7 +109,6 @@ namespace Yeast.Test
             var converter = new BinaryConverter();
             var result = converter.Serialize(val);
 
-            //Debug.Log($"Binary: {string.Join(", ", result)}");
             var val2 = converter.Deserialize(result);
             Assert.IsTrue(val.ValueEquals(val2));
 

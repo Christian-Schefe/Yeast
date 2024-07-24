@@ -23,7 +23,7 @@ To use Yeast in your project, follow these steps:
 1. Import the package into your Unity project.
 2. Add the necessary using statements to your script:
    ```csharp
-   using Yeast.Json;
+   using Yeast;
    ```
 3. Use the provided utility functions and classes to work with JSON in your project.
 
@@ -35,8 +35,8 @@ Here are some examples of how to use Yeast:
 public struct Test {
     public int key;
 }
-Test obj = Json.Parse<Test>("{\"key\":5}");
-string json = Json.Stringify(obj);
+Test obj = Yeast.FromJson<Test>("{\"key\":5}");
+string json = Yeast.ToJson(obj);
 Assert.AreEqual("{\"key\":5}", json);
 ```
 
