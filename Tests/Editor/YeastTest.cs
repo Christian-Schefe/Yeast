@@ -95,6 +95,20 @@ namespace Yeast.Test
         }
 
         [Test]
+        public void TestTupleData()
+        {
+            foreach (var data in TestDataProvider.GetTupleData()) Test(data);
+            Test(TestDataProvider.GetTupleData());
+        }
+
+        [Test]
+        public void TestTypeData()
+        {
+            foreach (var data in TestDataProvider.GetTypeData()) Test(data);
+            Test(TestDataProvider.GetTypeData());
+        }
+
+        [Test]
         public void TestVariousData()
         {
             foreach (var data in TestDataProvider.GetVariousData()) Test(data.Item1, data.Item2);

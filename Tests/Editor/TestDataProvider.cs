@@ -120,6 +120,27 @@ namespace Yeast.Test
             };
         }
 
+        public static List<(int, int, string)> GetTupleData()
+        {
+            return new()
+            {
+                (4, 5, "hello"),
+                (532, -55, "Hello World!"),
+            };
+        }
+        public static List<Type> GetTypeData()
+        {
+            return new()
+            {
+                typeof(int),
+                typeof(string),
+                typeof(School),
+                typeof(List<>),
+                typeof(List<int>),
+                typeof(Dictionary<int, (string, School)>)
+            };
+        }
+
         public static List<Vector2> GetVector2Data()
         {
             return new List<Vector2> { Vector2.zero, Vector2.one, new(1f, 2f), new(-1f, -2f), new(1e20f, 1e20f), new(-1e20f, -1e20f), new(1234567.89f, 1234567.89f), new(-1234567.89f, -1234567.89f) };
