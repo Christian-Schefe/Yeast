@@ -1,7 +1,5 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using Yeast.Json;
 
 namespace Yeast.Demo
 {
@@ -39,17 +37,31 @@ namespace Yeast.Demo
             };
 
             var json = Yeast.ToJson(testData);
-            Debug.Log(json);
+            Debug.Log("JSON: " + json);
 
-            var parsedData = Yeast.FromJson<MyData>(json);
+            var xml = Yeast.ToXml(testData);
+            Debug.Log("XML: " + xml);
 
-            var json2 = Yeast.ToJson(parsedData);
-            Debug.Log(json2);
+            var parsedDataJson = Yeast.FromJson<MyData>(json);
+            var parsedDataXml = Yeast.FromXml<MyData>(xml);
 
+            var json2 = Yeast.ToJson(parsedDataJson);
+            Debug.Log("JSON after roundtrip: " + json2);
+
+            var xml2 = Yeast.ToXml(parsedDataXml);
+            Debug.Log("XML after roundtrip: " + xml2);
 
             if (!Yeast.TryToJson(new Circular(), out _))
             {
                 Debug.Log("Failed to serialize data");
+            }
+
+            try
+            {
+                Yeast.ToJson(new Circular());
+            } catch (System.Exception e)
+            {
+                Debug.Log("Failed to serialize data: " + e.Message);
             }
 
             if (!Yeast.TryFromJson<int>("\"string\"", out _))
