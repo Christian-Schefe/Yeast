@@ -4,7 +4,7 @@ using Yeast.Memento;
 
 namespace Yeast.Test
 {
-    public class MementoConverterTest
+    public class MementoTest
     {
         [Test]
         public void TestNull()

@@ -5,7 +5,7 @@ using Yeast.Json;
 
 namespace Yeast.Test.Json
 {
-    public class JsonValueTest
+    public class JsonTest
     {
         [Test]
         public void TestToString()

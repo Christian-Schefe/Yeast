@@ -16,6 +16,13 @@ namespace Yeast.Demo
             public Dictionary<string, List<int>> lists;
         }
 
+        private class Circular
+        {
+            public Circular child;
+
+            public Circular() { child = this; }
+        }
+
         private void Start()
         {
             var testData = new MyData
@@ -31,13 +38,24 @@ namespace Yeast.Demo
                 }
             };
 
-            var json = JSON.Stringify(testData);
+            var json = Yeast.ToJson(testData);
             Debug.Log(json);
 
-            var parsedData = JSON.Parse<MyData>(json);
+            var parsedData = Yeast.FromJson<MyData>(json);
 
-            var json2 = JSON.Stringify(parsedData);
+            var json2 = Yeast.ToJson(parsedData);
             Debug.Log(json2);
+
+
+            if (!Yeast.TryToJson(new Circular(), out _))
+            {
+                Debug.Log("Failed to serialize data");
+            }
+
+            if (!Yeast.TryFromJson<int>("\"string\"", out _))
+            {
+                Debug.Log("Failed to parse data");
+            }
         }
     }
 }

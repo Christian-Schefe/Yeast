@@ -7,7 +7,7 @@ using Yeast.Memento;
 
 namespace Yeast.Test
 {
-    public class BinaryConverterTest
+    public class BinaryTest
     {
         [Test]
         public void TestAll()
