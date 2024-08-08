@@ -36,36 +36,36 @@ namespace Yeast.Demo
                 }
             };
 
-            var json = Yeast.ToJson(testData);
+            var json = testData.ToJson();
             Debug.Log("JSON: " + json);
 
-            var xml = Yeast.ToXml(testData);
+            var xml = testData.ToXml();
             Debug.Log("XML: " + xml);
 
-            var parsedDataJson = Yeast.FromJson<MyData>(json);
-            var parsedDataXml = Yeast.FromXml<MyData>(xml);
+            var parsedDataJson = json.FromJson<MyData>();
+            var parsedDataXml = xml.FromXml<MyData>();
 
-            var json2 = Yeast.ToJson(parsedDataJson);
+            var json2 = parsedDataJson.ToJson();
             Debug.Log("JSON after roundtrip: " + json2);
 
-            var xml2 = Yeast.ToXml(parsedDataXml);
+            var xml2 = parsedDataXml.ToXml();
             Debug.Log("XML after roundtrip: " + xml2);
 
-            if (!Yeast.TryToJson(new Circular(), out _))
+            if (!new Circular().TryToJson(out _))
             {
                 Debug.Log("Failed to serialize data");
             }
 
             try
             {
-                Yeast.ToJson(new Circular());
+                new Circular().ToJson();
             }
             catch (System.Exception e)
             {
                 Debug.Log("Failed to serialize data: " + e.Message);
             }
 
-            if (!Yeast.TryFromJson<int>("\"string\"", out _))
+            if (!"\"string\"".TryFromJson<int>(out _))
             {
                 Debug.Log("Failed to parse data");
             }

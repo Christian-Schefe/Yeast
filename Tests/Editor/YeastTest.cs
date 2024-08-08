@@ -117,25 +117,25 @@ namespace Yeast.Test
         [Test]
         public void TempTest()
         {
-            object obj = Yeast.FromJson<int>("66");
+            object obj = "66".FromJson<int>();
             Assert.AreEqual(66, obj);
 
-            obj = Yeast.FromJson<bool>("\"true\"");
+            obj = "\"true\"".FromJson<bool>();
             Assert.AreEqual(true, obj);
 
-            obj = Yeast.FromJson<string>("\"null\"");
+            obj = "\"null\"".FromJson<string>();
             Assert.AreEqual("null", obj);
 
-            obj = Yeast.FromJson<string>("null");
+            obj = "null".FromJson<string>();
             Assert.AreEqual(null, obj);
 
-            obj = Yeast.FromJson<string>("\"null\"");
+            obj = "\"null\"".FromJson<string>();
             Assert.AreEqual("null", obj);
 
-            obj = Yeast.FromJson<string>("55.266e2");
+            obj = "55.266e2".FromJson<string>();
             Assert.AreEqual("5526.6", obj);
 
-            obj = Yeast.FromXml<char>("<root><char>a</char></root>");
+            obj = "<root><char>a</char></root>".FromXml<char>();
             Assert.AreEqual('a', obj);
         }
 
@@ -155,46 +155,46 @@ namespace Yeast.Test
 
         private void TestJson(Type type, object obj)
         {
-            var json = Yeast.ToJson(obj);
+            var json = obj.ToJson();
             Debug.Log(json);
 
-            var obj2 = Yeast.FromJson(type, json);
+            var obj2 = json.FromJson(type);
             Assert.AreEqual(obj, obj2);
-            var json2 = Yeast.ToJson(obj2);
+            var json2 = obj2.ToJson();
             Assert.AreEqual(json, json2);
         }
 
         private void TestBinary(Type type, object obj)
         {
-            var bytes = Yeast.ToBytes(obj);
+            var bytes = obj.ToBytes();
             var hex = "hex " + BitConverter.ToString(bytes);
             Debug.Log(hex);
 
-            var obj2 = Yeast.FromBytes(type, bytes);
+            var obj2 = bytes.FromBytes(type);
             Assert.AreEqual(obj, obj2);
-            var bytes2 = Yeast.ToBytes(obj2);
+            var bytes2 = obj2.ToBytes();
             Assert.AreEqual(bytes, bytes2);
         }
 
         private void TestBase64(Type type, object obj)
         {
-            var base64 = Yeast.ToBase64(obj);
+            var base64 = obj.ToBase64();
             Debug.Log(base64);
 
-            var obj2 = Yeast.FromBase64(type, base64);
+            var obj2 = base64.FromBase64(type);
             Assert.AreEqual(obj, obj2);
-            var base64_2 = Yeast.ToBase64(obj2);
+            var base64_2 = obj2.ToBase64();
             Assert.AreEqual(base64, base64_2);
         }
 
         private void TestXml(Type type, object obj)
         {
-            var xml = Yeast.ToXml(obj);
+            var xml = obj.ToXml();
             Debug.Log(xml);
 
-            var obj2 = Yeast.FromXml(type, xml);
+            var obj2 = xml.FromXml(type);
             Assert.AreEqual(obj, obj2);
-            var xml2 = Yeast.ToXml(obj2);
+            var xml2 = obj2.ToXml();
             Assert.AreEqual(xml, xml2);
         }
     }

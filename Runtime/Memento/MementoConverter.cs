@@ -153,7 +153,7 @@ namespace Yeast.Memento
                 }
                 else
                 {
-                    result = Convert.ChangeType(memento.value, intType.Type);
+                    result = System.Convert.ChangeType(memento.value, intType.Type);
                 }
             }
             else throw new TypeMismatchException("Failed to convert long to " + type.Type.Name);
@@ -163,7 +163,7 @@ namespace Yeast.Memento
         {
             if (type is RationalTypeWrapper ratType)
             {
-                result = Convert.ChangeType(memento.value, ratType.Type);
+                result = System.Convert.ChangeType(memento.value, ratType.Type);
             }
             else throw new TypeMismatchException("Failed to convert double to " + type.Type.Name);
         }
@@ -302,7 +302,7 @@ namespace Yeast.Memento
                 result = new NullMemento();
                 return;
             }
-            result = new IntegerMemento(Convert.ToInt64(value));
+            result = new IntegerMemento(System.Convert.ToInt64(value));
         }
 
         public void Visit(RationalTypeWrapper rationalTypeWrapper)
@@ -312,7 +312,7 @@ namespace Yeast.Memento
                 result = new NullMemento();
                 return;
             }
-            result = new DecimalMemento(Convert.ToDouble(value));
+            result = new DecimalMemento(System.Convert.ToDouble(value));
         }
 
         public void Visit(CollectionTypeWrapper collectionTypeWrapper)
