@@ -14,13 +14,16 @@ namespace Yeast.Memento
         private static readonly Dictionary<Type, TypeWrapper> typeWrappers = new();
 
         protected Type type;
+        protected Type fullType;
         protected bool isNullable;
 
+        public Type FullType => fullType;
         public Type Type => type;
         public bool IsNullable => isNullable;
 
-        public TypeWrapper(Type type, bool isNullable)
+        public TypeWrapper(Type fullType, Type type, bool isNullable)
         {
+            this.fullType = fullType;
             this.type = type;
             this.isNullable = isNullable;
         }
@@ -35,14 +38,14 @@ namespace Yeast.Memento
 
             TypeWrapper result;
 
-            if (StringTypeWrapper.Matches(baseType)) result = new StringTypeWrapper(baseType);
-            else if (BoolTypeWrapper.Matches(baseType)) result = new BoolTypeWrapper(baseType, isNullable);
-            else if (IntegerTypeWrapper.Matches(baseType)) result = new IntegerTypeWrapper(baseType, isNullable);
-            else if (RationalTypeWrapper.Matches(baseType)) result = new RationalTypeWrapper(baseType, isNullable);
-            else if (RuntimeTypeTypeWrapper.Matches(baseType)) result = new RuntimeTypeTypeWrapper(baseType);
-            else if (CollectionTypeWrapper.Matches(baseType)) result = new CollectionTypeWrapper(baseType);
-            else if (StructTypeWrapper.Matches(baseType)) result = new StructTypeWrapper(baseType, isNullable);
-            else throw new InvalidOperationException($"Cannot create TypeWrapper from type {baseType}");
+            if (StringTypeWrapper.Matches(baseType)) result = new StringTypeWrapper(type, baseType);
+            else if (BoolTypeWrapper.Matches(baseType)) result = new BoolTypeWrapper(type, baseType, isNullable);
+            else if (IntegerTypeWrapper.Matches(baseType)) result = new IntegerTypeWrapper(type, baseType, isNullable);
+            else if (RationalTypeWrapper.Matches(baseType)) result = new RationalTypeWrapper(type, baseType, isNullable);
+            else if (RuntimeTypeTypeWrapper.Matches(baseType)) result = new RuntimeTypeTypeWrapper(type, baseType);
+            else if (CollectionTypeWrapper.Matches(baseType)) result = new CollectionTypeWrapper(type, baseType);
+            else if (StructTypeWrapper.Matches(baseType)) result = new StructTypeWrapper(type, baseType, isNullable);
+            else throw new InvalidOperationException($"Cannot create TypeWrapper from type {type} (base {baseType})");
 
             typeWrappers.Add(type, result);
             return result;
@@ -51,7 +54,7 @@ namespace Yeast.Memento
 
     public class StringTypeWrapper : TypeWrapper
     {
-        public StringTypeWrapper(Type type) : base(type, true)
+        public StringTypeWrapper(Type fullType, Type type) : base(fullType, type, true)
         {
         }
 
@@ -68,7 +71,7 @@ namespace Yeast.Memento
 
     public class BoolTypeWrapper : TypeWrapper
     {
-        public BoolTypeWrapper(Type type, bool isNullable) : base(type, isNullable)
+        public BoolTypeWrapper(Type fullType, Type type, bool isNullable) : base(fullType, type, isNullable)
         {
         }
 
@@ -85,11 +88,11 @@ namespace Yeast.Memento
 
     public class IntegerTypeWrapper : TypeWrapper
     {
-        private bool isEnum;
+        private readonly bool isEnum;
 
         public bool IsEnum => isEnum;
 
-        public IntegerTypeWrapper(Type type, bool isNullable) : base(type, isNullable)
+        public IntegerTypeWrapper(Type fullType, Type type, bool isNullable) : base(fullType, type, isNullable)
         {
             isEnum = type.IsEnum;
         }
@@ -107,7 +110,7 @@ namespace Yeast.Memento
 
     public class RationalTypeWrapper : TypeWrapper
     {
-        public RationalTypeWrapper(Type type, bool isNullable) : base(type, isNullable)
+        public RationalTypeWrapper(Type fullType, Type type, bool isNullable) : base(fullType, type, isNullable)
         {
         }
 
@@ -132,7 +135,7 @@ namespace Yeast.Memento
         public TypeWrapper ElementType => elementType;
         public bool IsCollection => isCollection;
 
-        public CollectionTypeWrapper(Type type) : base(type, true)
+        public CollectionTypeWrapper(Type fullType, Type type) : base(fullType, type, true)
         {
             if (TypeUtils.IsCollection(type, out var elType))
             {
@@ -171,7 +174,7 @@ namespace Yeast.Memento
         public Dictionary<string, Field> Fields => fields;
         public bool IsInstantiable => isInstantiable;
 
-        public StructTypeWrapper(Type type, bool isNullable) : base(type, isNullable)
+        public StructTypeWrapper(Type fullType, Type type, bool isNullable) : base(fullType, type, isNullable)
         {
             isInstantiable = TypeUtils.IsInstantiable(type);
 
@@ -233,7 +236,7 @@ namespace Yeast.Memento
 
     public class RuntimeTypeTypeWrapper : TypeWrapper
     {
-        public RuntimeTypeTypeWrapper(Type type) : base(type, false)
+        public RuntimeTypeTypeWrapper(Type fullType, Type type) : base(fullType, type, false)
         {
         }
 
@@ -264,14 +267,14 @@ namespace Yeast.Memento
         protected TIn value;
         protected TOut result;
 
-        public TOut Convert(TIn value, TypeWrapper type)
+        public TOut Convert(TIn value, TypeWrapper typeWrapper)
         {
             var oldVal = this.value;
-            var customType = ICustomTransformer.GetDeserializationType(type.Type);
-            type = TypeWrapper.FromType(customType);
+            var customType = ICustomTransformer.GetDeserializationType(typeWrapper.FullType);
+            typeWrapper = TypeWrapper.FromType(customType);
 
             this.value = value;
-            type.Accept(this);
+            typeWrapper.Accept(this);
             this.value = oldVal;
             return result;
         }

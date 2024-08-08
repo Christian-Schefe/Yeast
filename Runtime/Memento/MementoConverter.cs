@@ -115,6 +115,7 @@ namespace Yeast.Memento
             var oldType = this.type;
             var (newType, transformer) = ICustomTransformer.DeserializeTransformer(type);
             this.type = TypeWrapper.FromType(newType);
+
             memento.Accept(this);
             this.type = oldType;
             return transformer(result);
@@ -232,7 +233,7 @@ namespace Yeast.Memento
                         continue;
                     }
 
-                    object fieldValueObject = Deserialize(field.type.Type, fieldValue);
+                    object fieldValueObject = Deserialize(field.type.FullType, fieldValue);
                     field.setter(instance, fieldValueObject);
                 }
                 result = instance;

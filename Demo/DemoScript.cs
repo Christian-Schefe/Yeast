@@ -59,7 +59,8 @@ namespace Yeast.Demo
             try
             {
                 Yeast.ToJson(new Circular());
-            } catch (System.Exception e)
+            }
+            catch (System.Exception e)
             {
                 Debug.Log("Failed to serialize data: " + e.Message);
             }

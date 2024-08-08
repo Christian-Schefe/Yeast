@@ -160,6 +160,11 @@ namespace Yeast.Test
                 (typeof(Guid), Guid.NewGuid()),
                 (typeof(char), 'ß'),
                 (typeof(Type), typeof(School)),
+                (typeof(int?), 5),
+                (typeof(int?), null),
+                (typeof(Dictionary<string,int?>), null),
+                (typeof(Dictionary<string,int?>), new Dictionary<string,int?>()),
+                (typeof(Dictionary<string,int?>), new Dictionary<string,int?>(){ { "hi",5 }, {"hello",null } }),
             };
         }
     }
